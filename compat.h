@@ -51,6 +51,7 @@ typedef unsigned __int64 uint64_t;
 #include <string>
 #include <errno.h>
 #include <math.h>
+#include <vector>
 
 #ifdef _MSC_VER
 #include "getopt_win.h"
@@ -274,6 +275,8 @@ int inline stringreplace(std::string& source, const std::string& find, const std
 }
 
 std::string hex2bin(std::string input);
+
+std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems);
 
 };
 

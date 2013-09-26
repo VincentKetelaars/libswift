@@ -168,6 +168,7 @@ int utf8main (int argc, char** argv)
     Sha1Hash root_hash=Sha1Hash::ZERO;
     std::string filename = "",destdir = "", trackerargstr= "", zerostatedir="", urlfilename="";
     bool printurl=false, livestream=false, gtesting=false;
+    std::vector<Address *> bindaddrs;
     Address bindaddr;
     Address httpaddr;
     Address statsaddr;
@@ -196,11 +197,19 @@ int utf8main (int argc, char** argv)
                 scan_dirname = strdup(optarg);
                 break;
             case 'l':
-                bindaddr = Address(optarg);
-                if (bindaddr==Address())
-                    quit("address must be hostname:port, ip:port or just port\n");
-                wait_time = TINT_NEVER;
-                break;
+            	{
+					std::vector<std::string> addrs;
+					std::string str(optarg);
+					split(optarg, ',', addrs);
+					for (int i = 0; i < addrs.size(); i++) {
+						bindaddr = Address(addrs[i].c_str());
+						if (bindaddr==Address())
+							quit("address must be hostname:port, ip:port or just port\n");
+						wait_time = TINT_NEVER;
+						bindaddrs.push_back(&bindaddr);
+					}
+					break;
+				}
             case 't':
                 tracker = Address(optarg);
                 trackerargstr = strdup(optarg);
@@ -349,22 +358,25 @@ int utf8main (int argc, char** argv)
     if (httpgw_enabled)
         fprintf(stderr,"CWD %s\n",getcwd_utf8().c_str() );
 
-    if (bindaddr!=Address()) { // seeding
-        if (Listen(bindaddr)<=0)
-            quit("cant listen to %s\n",bindaddr.str().c_str())
-    } else if (tracker!=Address() || httpgw_enabled || cmdgw_enabled) { // leeching
-        evutil_socket_t sock = INVALID_SOCKET;
-        for (int i=0; i<=10; i++) {
-            bindaddr = Address((uint32_t)INADDR_ANY,0);
-            sock = Listen(bindaddr);
-            if (sock>0)
-                break;
-            if (i==10)
-                quit("cant listen on %s\n",bindaddr.str().c_str());
-        }
-        if (!quiet)
-            fprintf(stderr,"swift: My listen port is %d\n", BoundAddress(sock).port() );
-    }
+    for (int i = 0; i < bindaddrs.size(); i++) {
+		bindaddr = *bindaddrs[i];
+		if (bindaddr!=Address()) { // seeding
+			if (Listen(bindaddr)<=0)
+				quit("cant listen to %s\n",bindaddr.str().c_str())
+		} else if (tracker!=Address() || httpgw_enabled || cmdgw_enabled) { // leeching
+			evutil_socket_t sock = INVALID_SOCKET;
+			for (int i=0; i<=10; i++) {
+				bindaddr = Address((uint32_t)INADDR_ANY,0);
+				sock = Listen(bindaddr);
+				if (sock>0)
+					break;
+				if (i==10)
+					quit("cant listen on %s\n",bindaddr.str().c_str());
+			}
+			if (!quiet)
+				fprintf(stderr,"swift: My listen port is %d\n", BoundAddress(sock).port() );
+		}
+	}
 
     if (tracker!=Address() && !printurl)
         SetTracker(tracker);

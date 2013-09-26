@@ -1,4 +1,4 @@
-LIBEVENT_HOME=/arno/pkgs/libevent-2.0.21-stable-debug
+LIBEVENT_HOME=/vincent/home/svn/libswift/libevent21
 
 # Remove NDEBUG define to trigger asserts
 CPPFLAGS+=-O2 -I. -DNDEBUG -Wall -Wno-sign-compare -Wno-unused -g -I${LIBEVENT_HOME}/include -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
@@ -15,7 +15,7 @@ swift-static: swift
 	touch swift-static
 
 swift-dynamic: swift
-	g++ ${CPPFLAGS} -o swift *.o ${LDFLAGS} -L${LIBEVENT_HOME}/lib -Wl,-rpath,${LIBEVENT_HOME}/lib
+	g++ ${CPPFLAGS} -o swift *.o ${LDFLAGS} -L${LIBEVENT_HOME}/.libs -Wl,-rpath,${LIBEVENT_HOME}/.libs
 	touch swift-dynamic
 
 clean:
