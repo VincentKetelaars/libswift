@@ -1116,13 +1116,15 @@ void swift::CmdGwTunnelSendUDP(struct evbuffer *evb)
         fprintf(stderr,"cmdgw: sendudp :can't copy to sendbuf!");
         return;
     }
-    if (Channel::sock_count != 1)
-    {
-        fprintf(stderr,"cmdgw: sendudp: no single UDP socket!");
-        evbuffer_free(sendevbuf);
-        return;
-    }
+//    if (Channel::sock_count != 1)
+//    {
+//        fprintf(stderr,"cmdgw: sendudp: no single UDP socket!");
+//        evbuffer_free(sendevbuf);
+//        return;
+//    }
     evutil_socket_t sock = Channel::sock_open[Channel::sock_count-1].sock;
+    fprintf(stderr, "Socket address: %s", Channel::BoundAddress(Channel::sock_open[0].sock).str().c_str());
+    fprintf(stderr, "Socket address: %s", Channel::BoundAddress(Channel::sock_open[Channel::sock_count-1].sock).str().c_str());
 
     Channel::SendTo(sock,cmd_tunnel_dest_addr,sendevbuf);
 

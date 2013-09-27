@@ -168,7 +168,7 @@ int utf8main (int argc, char** argv)
     Sha1Hash root_hash=Sha1Hash::ZERO;
     std::string filename = "",destdir = "", trackerargstr= "", zerostatedir="", urlfilename="";
     bool printurl=false, livestream=false, gtesting=false;
-    std::vector<Address *> bindaddrs;
+    std::vector<Address> bindaddrs;
     Address bindaddr;
     Address httpaddr;
     Address statsaddr;
@@ -206,7 +206,7 @@ int utf8main (int argc, char** argv)
 						if (bindaddr==Address())
 							quit("address must be hostname:port, ip:port or just port\n");
 						wait_time = TINT_NEVER;
-						bindaddrs.push_back(&bindaddr);
+						bindaddrs.push_back(bindaddr);
 					}
 					break;
 				}
@@ -359,7 +359,7 @@ int utf8main (int argc, char** argv)
         fprintf(stderr,"CWD %s\n",getcwd_utf8().c_str() );
 
     for (int i = 0; i < bindaddrs.size(); i++) {
-		bindaddr = *bindaddrs[i];
+		bindaddr = bindaddrs[i];
 		if (bindaddr!=Address()) { // seeding
 			if (Listen(bindaddr)<=0)
 				quit("cant listen to %s\n",bindaddr.str().c_str())

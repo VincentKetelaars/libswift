@@ -85,7 +85,7 @@ if sys.platform == "win32":
 else:
     # Linux or Mac build
     
-    libevent2path = '/arno/pkgs/libevent-2.0.15-arno-http'
+    libevent2path = '/home/vincent/svn/libswift/libevent21'
 
     # Enable the user defining external includes
     if 'CPPPATH' in os.environ:
