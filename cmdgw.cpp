@@ -1123,8 +1123,6 @@ void swift::CmdGwTunnelSendUDP(struct evbuffer *evb)
 //        return;
 //    }
     evutil_socket_t sock = Channel::sock_open[Channel::sock_count-1].sock;
-    fprintf(stderr, "Socket address: %s", Channel::BoundAddress(Channel::sock_open[0].sock).str().c_str());
-    fprintf(stderr, "Socket address: %s", Channel::BoundAddress(Channel::sock_open[Channel::sock_count-1].sock).str().c_str());
 
     Channel::SendTo(sock,cmd_tunnel_dest_addr,sendevbuf);
 

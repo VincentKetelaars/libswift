@@ -35,7 +35,7 @@ bool Channel::SELF_CONN_OK = false;
 swift::tint Channel::TIMEOUT = TINT_SEC*60;
 channels_t Channel::channels(1);
 Address Channel::tracker;
-FILE* Channel::debug_file = NULL;
+FILE* Channel::debug_file = stderr;
 tint Channel::MIN_PEX_REQUEST_INTERVAL = TINT_SEC;
 
 /*

@@ -41,6 +41,7 @@ void StartLibraryCleanup()
 
 int     swift::Listen( Address addr)
 {
+	struct event evrecv;
     if (api_debug)
         fprintf(stderr,"swift::Listen addr %s\n", addr.str().c_str() );
 
@@ -50,8 +51,8 @@ int     swift::Listen( Address addr)
     cb.may_read = &Channel::LibeventReceiveCallback;
     cb.sock = Channel::Bind(addr,cb);
     // swift UDP receive
-    event_assign(&Channel::evrecv, Channel::evbase, cb.sock, EV_READ,
-         cb.may_read, NULL);
+    event_assign(&Channel::evrecv, Channel::evbase, cb.sock, EV_READ|EV_PERSIST,
+         cb.may_read, &evrecv);
     event_add(&Channel::evrecv, NULL);
     return cb.sock;
 }

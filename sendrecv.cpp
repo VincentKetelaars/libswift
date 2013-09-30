@@ -1651,9 +1651,10 @@ void Channel::AddPexReq(struct evbuffer *evb) {
 void Channel::LibeventReceiveCallback(evutil_socket_t fd, short event, void *arg) {
     // Called by libevent when a datagram is received on the socket
     Time();
-    dprintf("%s recv callback\n",tintstr() );
+    dprintf("%s recv callback %s\n",tintstr(), Channel::BoundAddress(fd).str().c_str());
 
     RecvDatagram(fd);
+//    struct event *evrecv = (struct event *) arg;
     event_add(&evrecv, NULL);
 }
 
