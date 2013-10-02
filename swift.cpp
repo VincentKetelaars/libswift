@@ -129,6 +129,14 @@ long long int cmdgw_report_counter=0;
 long long int cmdgw_report_interval=REPORT_INTERVAL; // seconds
 
 
+static void fatal_callback(int err) {
+	fprintf(stderr, "FATAL CALLBACK: %d", err);
+}
+
+static void log_callback(int severity, const char* msg) {
+	fprintf(stderr, "LOG CALLBACK: %d, %s", severity, msg);
+}
+
 // UNICODE: TODO, convert to std::string carrying UTF-8 arguments. Problem is
 // a string based getopt_long type parser.
 int utf8main (int argc, char** argv)
@@ -178,6 +186,10 @@ int utf8main (int argc, char** argv)
     tint zerostimeout = TINT_NEVER;
 
     LibraryInit();
+
+    event_enable_debug_mode();
+    event_set_fatal_callback(fatal_callback);
+    event_set_log_callback(log_callback);
     Channel::evbase = event_base_new();
 
     int c,n;

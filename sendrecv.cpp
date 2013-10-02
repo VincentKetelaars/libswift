@@ -19,7 +19,6 @@ using namespace swift;
 using namespace std;
 
 struct event_base *Channel::evbase;
-struct event Channel::evrecv;
 
 #define DEBUGTRAFFIC     0
 
@@ -1654,8 +1653,6 @@ void Channel::LibeventReceiveCallback(evutil_socket_t fd, short event, void *arg
     dprintf("%s recv callback %s\n",tintstr(), Channel::BoundAddress(fd).str().c_str());
 
     RecvDatagram(fd);
-//    struct event *evrecv = (struct event *) arg;
-    event_add(&evrecv, NULL);
 }
 
 void    Channel::RecvDatagram (evutil_socket_t socket) {

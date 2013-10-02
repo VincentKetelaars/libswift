@@ -34,26 +34,26 @@ void StartLibraryCleanup()
     }
 }
 
-
 /*
  * Global Operations
  */
 
 int     swift::Listen( Address addr)
 {
-	struct event evrecv;
+	event *evrecv = new event();
     if (api_debug)
         fprintf(stderr,"swift::Listen addr %s\n", addr.str().c_str() );
 
-    StartLibraryCleanup();
+    if (Channel::sock_count == 0)
+    	StartLibraryCleanup();
 
     sckrwecb_t cb;
     cb.may_read = &Channel::LibeventReceiveCallback;
     cb.sock = Channel::Bind(addr,cb);
     // swift UDP receive
-    event_assign(&Channel::evrecv, Channel::evbase, cb.sock, EV_READ|EV_PERSIST,
-         cb.may_read, &evrecv);
-    event_add(&Channel::evrecv, NULL);
+    event_assign(evrecv, Channel::evbase, cb.sock, EV_READ|EV_PERSIST,
+         cb.may_read, NULL);
+    event_add(evrecv, NULL);
     return cb.sock;
 }
 

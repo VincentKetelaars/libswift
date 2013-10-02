@@ -686,7 +686,6 @@ namespace swift {
         static sckrwecb_t sock_open[DGRAM_MAX_SOCK_OPEN];
         static Address  tracker; // Global tracker for all transfers
         static struct event_base *evbase;
-        static struct event evrecv;
         static const char* SEND_CONTROL_MODES[];
 
         static tint     epoch, start;
