@@ -1736,7 +1736,7 @@ void    Channel::RecvDatagram (evutil_socket_t socket) {
 
     } else if (mych==CMDGW_TUNNEL_DEFAULT_CHANNEL_ID) {
         // SOCKTUNNEL
-        CmdGwTunnelUDPDataCameIn(addr,CMDGW_TUNNEL_DEFAULT_CHANNEL_ID,evb);
+        CmdGwTunnelUDPDataCameIn(addr,CMDGW_TUNNEL_DEFAULT_CHANNEL_ID,evb,Channel::BoundAddress(socket).port());
         evbuffer_free(evb);
         return;
     } else { // peer responds to my handshake (and other messages)

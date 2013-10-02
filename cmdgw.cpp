@@ -80,6 +80,7 @@ uint32_t       cmd_tunnel_expect=0;
 Address	       cmd_tunnel_dest_addr;
 uint32_t       cmd_tunnel_dest_chanid;
 evutil_socket_t cmd_tunnel_sock=INVALID_SOCKET;
+uint16_t		cmd_tunnel_port=0;
 
 // HTTP gateway address for PLAY cmd
 Address cmd_gw_httpaddr;
@@ -933,6 +934,14 @@ int CmdGwHandleCommand(evutil_socket_t cmdsock, char *copyline)
         if (token == NULL)
             return ERROR_MISS_ARG;
         char *sizestr = token;
+        token = strtok_r(NULL," ",&savetok);      // size
+		if (token != NULL) {
+			const char *portstr = token;
+			uint16_t p;
+			if (sscanf(portstr,"%i",&p))
+				cmd_tunnel_port = p;
+			fprintf(stderr, "TUNNELPORT: %d", cmd_tunnel_port);
+		}
 
         cmd_tunnel_dest_addr = Address(addrstr);
         int n = sscanf(chanstr,"%08x",&cmd_tunnel_dest_chanid);
@@ -1057,7 +1066,7 @@ bool InstallCmdGateway (struct event_base *evbase,Address cmdaddr,Address httpad
 
 
 // SOCKTUNNEL
-void swift::CmdGwTunnelUDPDataCameIn(Address srcaddr, uint32_t srcchan, struct evbuffer* evb)
+void swift::CmdGwTunnelUDPDataCameIn(Address srcaddr, uint32_t srcchan, struct evbuffer* evb, uint16_t incoming_port)
 {
     // Message received on UDP socket, forward over TCP conn.
 
@@ -1073,7 +1082,8 @@ void swift::CmdGwTunnelUDPDataCameIn(Address srcaddr, uint32_t srcchan, struct e
     std::ostringstream oss;
     oss << "TUNNELRECV " << srcaddr.str();
     oss << "/" << std::hex << srcchan;
-    oss << " " << std::dec << evbuffer_get_length(evb) << "\r\n";
+    oss << " " << std::dec << evbuffer_get_length(evb);
+    oss << " " << incoming_port << "\r\n";
 
     std::stringbuf *pbuf=oss.rdbuf();
     size_t slen = strlen(pbuf->str().c_str());
@@ -1116,16 +1126,25 @@ void swift::CmdGwTunnelSendUDP(struct evbuffer *evb)
         fprintf(stderr,"cmdgw: sendudp :can't copy to sendbuf!");
         return;
     }
-//    if (Channel::sock_count != 1)
-//    {
-//        fprintf(stderr,"cmdgw: sendudp: no single UDP socket!");
-//        evbuffer_free(sendevbuf);
-//        return;
-//    }
+    if (Channel::sock_count == 0)
+    {
+        fprintf(stderr,"cmdgw: sendudp: no single UDP socket!");
+        evbuffer_free(sendevbuf);
+        return;
+    }
 
     evutil_socket_t sock = Channel::sock_open[Channel::sock_count-1].sock;
+    if (cmd_tunnel_port > 0) {
+    	for (int i = 0; i < Channel::sock_count; i++) {
+    		evutil_socket_t s = Channel::sock_open[i].sock;
+    		if (cmd_tunnel_port == Channel::BoundAddress(s).port()) {
+    			sock = s;
+    		}
+    	}
+    }
     fprintf(stderr, "Socket: %s\n", Channel::BoundAddress(sock).str().c_str());
     int r = Channel::SendTo(sock,cmd_tunnel_dest_addr,sendevbuf);
 
+    cmd_tunnel_port = 0; // Reset to 0. Each packet should have defined an address.. Or not.
     evbuffer_free(sendevbuf);
 }
