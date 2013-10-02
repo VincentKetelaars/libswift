@@ -939,6 +939,8 @@ namespace swift {
         void        CleanHintOut(bin_t pos);
         void        Reschedule();
         void        UpdateDIP(bin_t pos); // RETRANSMIT
+        evutil_socket_t GetSocket();
+        evutil_socket_t NextSocket();
 
         // Arno, 2012-06-14: Replace with hashtable (unsorted_map). This
         // currently grows for ever, filling with NULLs for old channels

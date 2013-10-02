@@ -306,7 +306,9 @@ uint32_t   ContentTransfer::GetNumSeeders()
 
 void ContentTransfer::AddPeer(Address &peer)
 {
-    Channel *c = new Channel(this,INVALID_SOCKET,peer);
+	for (int i = 0; i < Channel::sock_count; i++) {
+		Channel *c = new Channel(this,Channel::sock_open[i].sock,peer);
+	}
 }
 
 

@@ -40,7 +40,7 @@ void StartLibraryCleanup()
 
 int     swift::Listen( Address addr)
 {
-	event *evrecv = new event();
+	struct event *evrecv = new struct event;
     if (api_debug)
         fprintf(stderr,"swift::Listen addr %s\n", addr.str().c_str() );
 

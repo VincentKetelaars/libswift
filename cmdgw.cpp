@@ -940,7 +940,6 @@ int CmdGwHandleCommand(evutil_socket_t cmdsock, char *copyline)
 			uint16_t p;
 			if (sscanf(portstr,"%i",&p))
 				cmd_tunnel_port = p;
-			fprintf(stderr, "TUNNELPORT: %d", cmd_tunnel_port);
 		}
 
         cmd_tunnel_dest_addr = Address(addrstr);
@@ -1082,7 +1081,7 @@ void swift::CmdGwTunnelUDPDataCameIn(Address srcaddr, uint32_t srcchan, struct e
     std::ostringstream oss;
     oss << "TUNNELRECV " << srcaddr.str();
     oss << "/" << std::hex << srcchan;
-    oss << " " << std::dec << evbuffer_get_length(evb);
+    oss << " " << std::dec << evbuffer_get_length(evb) ;
     oss << " " << incoming_port << "\r\n";
 
     std::stringbuf *pbuf=oss.rdbuf();

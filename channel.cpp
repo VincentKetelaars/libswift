@@ -380,8 +380,13 @@ void     swift::SetTracker(const Address& tracker) {
 int Channel::DecodeID(int scrambled) {
     return scrambled ^ (int)start;
 }
+
 int Channel::EncodeID(int unscrambled) {
     return unscrambled ^ (int)start;
+}
+
+evutil_socket_t Channel::GetSocket() {
+	return socket_;
 }
 
 
@@ -637,3 +642,5 @@ binvector swift::bin_fragment(bin_t &origbin, bin_t &cancelbin)
 
     return bv;
 }
+
+
