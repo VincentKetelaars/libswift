@@ -15,7 +15,7 @@ swift-static: swift
 	touch swift-static
 
 swift-dynamic: swift
-	g++ ${CPPFLAGS} -o swift *.o ${LDFLAGS} -L${LIBEVENT_HOME}/.libs -Wl,-rpath,${LIBEVENT_HOME}/.libs
+	g++ ${CPPFLAGS} -o swift *.o ${LDFLAGS} -L${LIBEVENT_HOME}/lib -Wl,-rpath,${LIBEVENT_HOME}/lib
 	touch swift-dynamic
 
 clean:
