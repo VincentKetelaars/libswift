@@ -18,3 +18,7 @@ swift-dynamic
 
 # scons
 .sconsign.dblite
+
+# test creations
+_pextest
+*test.sh.log
