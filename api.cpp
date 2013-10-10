@@ -44,6 +44,7 @@ int     swift::Listen( Address addr)
     if (api_debug)
         fprintf(stderr,"swift::Listen addr %s\n", addr.str().c_str() );
 
+    // Only do StartLibraryCleanup once, otherwise the same event is added to base again
     if (Channel::sock_count == 0)
     	StartLibraryCleanup();
 
