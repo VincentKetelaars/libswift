@@ -85,7 +85,7 @@ uint16_t		cmd_tunnel_port=0;
 // HTTP gateway address for PLAY cmd
 Address cmd_gw_httpaddr;
 
-#define cmd_gw_debug	false
+#define cmd_gw_debug	true
 
 tint cmd_gw_last_open=0;
 
