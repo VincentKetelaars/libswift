@@ -262,12 +262,16 @@ evutil_socket_t Channel::Bind (Address address, sckrwecb_t callbacks) {
     #define dbnd_ensure(x) { if (!(x)) { \
         print_error("binding fails"); close_socket(fd); return INVALID_SOCKET; } }
     dbnd_ensure ( (fd = socket(address.get_family(), SOCK_DGRAM, 0)) >= 0 );
+    // IPV6_PKTINFO and IP_PKTINFO allow to see the interface on receive
+    // This needs to be set right after creation
     dbnd_ensure( make_socket_nonblocking(fd) );  // FIXME may remove this
     int enable = true;
     dbnd_ensure ( setsockopt(fd, SOL_SOCKET, SO_SNDBUF,
                              (setsockoptptr_t)&sndbuf, sizeof(int)) == 0 );
     dbnd_ensure ( setsockopt(fd, SOL_SOCKET, SO_RCVBUF,
                              (setsockoptptr_t)&rcvbuf, sizeof(int)) == 0 );
+//    char *devname = "wlan0";
+//    dbnd_ensure ( setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, devname, strlen(devname)));
     //setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (setsockoptptr_t)&enable, sizeof(int));
     if (address.get_family() == AF_INET6)
     {
