@@ -14,6 +14,10 @@
 #include "swift.h"
 #include "bin_utils.h"
 
+#include <ifaddrs.h>
+#include <net/if.h>
+#include <sstream>
+
 using namespace std;
 using namespace swift;
 
@@ -253,6 +257,117 @@ tint Channel::Time () {
     return now_t::now = usec_time();
 }
 
+int get_routing_table_number(string name) {
+	// Return the routing table number for the given interface name.
+
+	char n = *name.rbegin();
+	int number = n - '0';
+	if (number < 0 || number > 9) {
+		fprintf(stderr, "Got interface number %d\n", number);
+		return -1;
+	}
+	if (name.find("eth") == 0) {
+		return 1+number;
+	} else if (name.find("ath") == 0) {
+		return 11+number;
+	} else if (name.find("wlan") == 0) {
+		return 21+number;
+	} else if (name.find("ppp") == 0) {
+		return 31+number;
+	} else {
+		return -1;
+	}
+}
+
+int set_routing_table(string ifname, sockaddr_in sa, sockaddr_in netmask) {
+	// Routing picture: http://billauer.co.il/non-html/ipmasq-html2x.gif
+	string ip = inet_ntoa(sa.sin_addr);
+	short port = ntohs(sa.sin_port);
+	int table_num = get_routing_table_number(string (ifname));
+	if (table_num > 0) {
+		std::ostringstream oss;
+		oss << "ip route flush table " << table_num;
+		fprintf(stderr,"CMD: %s\n", oss.str().c_str());
+		system(oss.str().c_str());
+
+		oss.str(""); // oss.clear() is probably not necessary..
+		oss << "iptables -A OUTPUT -o "<< ifname.c_str() << " -t mangle -p udp -s " << ip;
+		if (port > 0)
+			oss << " --sport " << port; // Can either set port or range of ports with :
+		oss << " -j MARK --set-mark " << table_num;
+		fprintf(stderr,"CMD: %s\n", oss.str().c_str());
+		system(oss.str().c_str());
+
+		oss.str("");
+		oss << "ip rule add fwmark " << table_num << " table " << table_num;
+		fprintf(stderr,"CMD: %s\n", oss.str().c_str());
+		system(oss.str().c_str());
+
+		struct in_addr addr = sa.sin_addr;
+//		*((char *)&addr.s_addr + 3) = 1; // Change the last byte of the ip address to 1
+//		addr.s_addr &= ~0xff000000; // Clear the most significant byte
+
+		// Gateway assumption: First address of the subnet.
+		addr.s_addr &= netmask.sin_addr.s_addr; // Set netmask zero bits to zero.
+		addr.s_addr |= 0x01000000; // Add one to the most significant byte
+
+//		fprintf(stderr, "GATEWAY %s\n", inet_ntoa(addr));
+
+		oss.str("");
+		oss << "ip route add dev " << ifname.c_str() << " default via " << inet_ntoa(addr) << " table " << table_num;
+		fprintf(stderr, "CMD: %s\n", oss.str().c_str());
+		system(oss.str().c_str());
+
+		// Postrouting may be needed to make sure that packets actually arrive here
+		//iptables -A POSTROUTING -t nat -o wlan0 -p tcp --dport 443 -j SNAT --to 192.168.0.2
+
+//		table_numbers.push_back(table_num);
+	}
+	return table_num;
+}
+
+char *ipv4_to_if(sockaddr_in *find, std::map<string, short> pifs, sockaddr_in &netmask) {
+	struct ifaddrs *addrs, *iap;
+	struct sockaddr_in *sa, *temp_netmask;
+	struct in_addr si;
+	char *buf = NULL;
+	short priority = 0;
+
+	getifaddrs(&addrs);
+	for (iap = addrs; iap != NULL; iap = iap->ifa_next) {
+		if (iap->ifa_addr && (iap->ifa_flags & IFF_UP) && iap->ifa_addr->sa_family == AF_INET) {
+			sa = (struct sockaddr_in *)(iap->ifa_addr);
+			temp_netmask = (struct sockaddr_in *) iap->ifa_netmask;
+			// Determine whether both address are in the same subnet.. If so then pick this address.
+			in_addr_t cmp_subnet1 = find->sin_addr.s_addr & temp_netmask->sin_addr.s_addr;
+			in_addr_t cmp_subnet2 = sa->sin_addr.s_addr & temp_netmask->sin_addr.s_addr;
+			if (find && memcmp(&cmp_subnet1, &cmp_subnet2, sizeof(cmp_subnet1)) == 0) {
+				fprintf(stderr, "Found interface %s with ip %s\n", iap->ifa_name, inet_ntoa(sa->sin_addr));
+				netmask = *temp_netmask;
+				find->sin_addr = sa->sin_addr;
+				return iap->ifa_name;
+			}
+			// For the case that no match is found
+			// Determine default interface using pifs priority
+			std::map<string, short>::iterator it= pifs.find(iap->ifa_name);
+			if (it != pifs.end() && it->second > priority) { // Higher number, higher priority
+				si = sa->sin_addr;
+				buf = iap->ifa_name;
+				priority = it->second;
+				netmask = *temp_netmask;
+			}
+		}
+	}
+	freeifaddrs(addrs);
+	if (buf != NULL) {
+		find->sin_addr = si; // Set the default interface address
+		fprintf(stderr, "Failed to find resembling ip. Try interface %s with ip %s %x\n",
+				buf, inet_ntoa(find->sin_addr), find->sin_addr.s_addr);
+	}
+
+	return buf;
+}
+
 // SOCKMGMT
 evutil_socket_t Channel::Bind (Address address, sckrwecb_t callbacks) {
     struct sockaddr_storage sa = address;
@@ -270,8 +385,20 @@ evutil_socket_t Channel::Bind (Address address, sckrwecb_t callbacks) {
                              (setsockoptptr_t)&sndbuf, sizeof(int)) == 0 );
     dbnd_ensure ( setsockopt(fd, SOL_SOCKET, SO_RCVBUF,
                              (setsockoptptr_t)&rcvbuf, sizeof(int)) == 0 );
-//    char *devname = "wlan0";
-//    dbnd_ensure ( setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, devname, strlen(devname)));
+
+    std::map<string, short> pifs;
+	pifs["wlan0"] = 1;
+	pifs["eth0"] = 2;
+	sockaddr_in netmask;
+	char *devname = ipv4_to_if((sockaddr_in*)&sa, pifs, netmask);
+	if (devname == NULL) {
+		fprintf(stderr, "No interface has been found\n");
+		return -1;
+	}
+
+	set_routing_table(string (devname), *(sockaddr_in*)&sa, netmask);
+
+    dbnd_ensure ( setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, devname, strlen(devname)));
     //setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (setsockoptptr_t)&enable, sizeof(int));
     if (address.get_family() == AF_INET6)
     {
