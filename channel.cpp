@@ -17,6 +17,8 @@
 #include <ifaddrs.h>
 #include <net/if.h>
 #include <sstream>
+#include <bitset>
+#include <climits>
 
 using namespace std;
 using namespace swift;
@@ -284,44 +286,46 @@ int set_routing_table(string ifname, sockaddr_in sa, sockaddr_in netmask) {
 	string ip = inet_ntoa(sa.sin_addr);
 	short port = ntohs(sa.sin_port);
 	int table_num = get_routing_table_number(string (ifname));
+
+#define sys_call(x) res = system(x); if (res != 0) { dprintf("System call %s returns %d", x, res); }
+	int res = 0; // Needs to be defined, if sys_call is used
+
 	if (table_num > 0) {
 		std::ostringstream oss;
 		oss << "ip route flush table " << table_num;
 		fprintf(stderr,"CMD: %s\n", oss.str().c_str());
-		system(oss.str().c_str());
+		sys_call(oss.str().c_str());
 
-		oss.str(""); // oss.clear() is probably not necessary..
-		oss << "iptables -A OUTPUT -o "<< ifname.c_str() << " -t mangle -p udp -s " << ip;
-		if (port > 0)
-			oss << " --sport " << port; // Can either set port or range of ports with :
-		oss << " -j MARK --set-mark " << table_num;
-		fprintf(stderr,"CMD: %s\n", oss.str().c_str());
-		system(oss.str().c_str());
-
+		// By default the rule should be entered in the list with higher priority than the main table
 		oss.str("");
-		oss << "ip rule add fwmark " << table_num << " table " << table_num;
+		oss << "ip rule add from " << ip << " table " << table_num;
 		fprintf(stderr,"CMD: %s\n", oss.str().c_str());
-		system(oss.str().c_str());
+		sys_call(oss.str().c_str());
 
 		struct in_addr addr = sa.sin_addr;
-		//		*((char *)&addr.s_addr + 3) = 1; // Change the last byte of the ip address to 1
-		//		addr.s_addr &= ~0xff000000; // Clear the most significant byte
+		addr.s_addr &= netmask.sin_addr.s_addr; // Set netmask zero bits to zero to get the base ip address
+		// Get the number of bits set to 1
+		std::bitset<sizeof(netmask.sin_addr.s_addr) * CHAR_BIT> b(netmask.sin_addr.s_addr);
 
-		// Gateway assumption: First address of the subnet.
-		addr.s_addr &= netmask.sin_addr.s_addr; // Set netmask zero bits to zero.
-		addr.s_addr |= 0x01000000; // Add one to the most significant byte
+//		fprintf(stderr, "GATEWAY %s\n", inet_ntoa(addr));
 
-		//		fprintf(stderr, "GATEWAY %s\n", inet_ntoa(addr));
+		// Is this one necessary? Probably in the case of point to point networks only.. So yeah.
+		oss.str("");
+		oss << "ip route add dev " << ifname.c_str() << " " << inet_ntoa(addr) << "/" << b.count() << " table " << table_num;
+		fprintf(stderr, "CMD: %s\n", oss.str().c_str());
+		sys_call(oss.str().c_str());
+
+		addr.s_addr |= 0x01000000; // Add one to the most significant byte to get the most likely address for the gateway
 
 		oss.str("");
 		oss << "ip route add dev " << ifname.c_str() << " default via " << inet_ntoa(addr) << " table " << table_num;
 		fprintf(stderr, "CMD: %s\n", oss.str().c_str());
-		system(oss.str().c_str());
+		sys_call(oss.str().c_str());
 
-		// Postrouting may be needed to make sure that packets actually arrive here
-		//iptables -A POSTROUTING -t nat -o wlan0 -p tcp --dport 443 -j SNAT --to 192.168.0.2
-
-		//		table_numbers.push_back(table_num);
+		// TODO: These should be removed afterwards..
+		// ip rule delete table <table_num>
+		// ip route flush table <table_num>
+		// table_numbers.push_back(table_num);
 	}
 	return table_num;
 }

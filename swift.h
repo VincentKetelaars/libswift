@@ -1262,7 +1262,7 @@ namespace swift {
  #define SWIFT_MAX_CONNECTIONS 20
 
     // SOCKTUNNEL
-    void CmdGwTunnelUDPDataCameIn(Address srcaddr, uint32_t srcchan, struct evbuffer* evb, uint16_t incoming_port);
+    void CmdGwTunnelUDPDataCameIn(Address srcaddr, uint32_t srcchan, struct evbuffer* evb, Address incoming_port);
     void CmdGwTunnelSendUDP(struct evbuffer *evb); // for friendship with Channel
 
 } // namespace end

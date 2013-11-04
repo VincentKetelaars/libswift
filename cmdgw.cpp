@@ -80,7 +80,7 @@ uint32_t       cmd_tunnel_expect=0;
 Address	       cmd_tunnel_dest_addr;
 uint32_t       cmd_tunnel_dest_chanid;
 evutil_socket_t cmd_tunnel_sock=INVALID_SOCKET;
-uint16_t		cmd_tunnel_port=0;
+Address			cmd_tunnel_src_addr;
 
 // HTTP gateway address for PLAY cmd
 Address cmd_gw_httpaddr;
@@ -934,12 +934,10 @@ int CmdGwHandleCommand(evutil_socket_t cmdsock, char *copyline)
         if (token == NULL)
             return ERROR_MISS_ARG;
         char *sizestr = token;
-        token = strtok_r(NULL," ",&savetok);      // size
+        token = strtok_r(NULL," ",&savetok);      // src addr
 		if (token != NULL) {
-			const char *portstr = token;
-			uint16_t p;
-			if (sscanf(portstr,"%i",&p))
-				cmd_tunnel_port = p;
+			char *srcaddrstr = token;
+			cmd_tunnel_src_addr = Address(srcaddrstr);
 		}
 
         cmd_tunnel_dest_addr = Address(addrstr);
@@ -1065,7 +1063,7 @@ bool InstallCmdGateway (struct event_base *evbase,Address cmdaddr,Address httpad
 
 
 // SOCKTUNNEL
-void swift::CmdGwTunnelUDPDataCameIn(Address srcaddr, uint32_t srcchan, struct evbuffer* evb, uint16_t incoming_port)
+void swift::CmdGwTunnelUDPDataCameIn(Address srcaddr, uint32_t srcchan, struct evbuffer* evb, Address destaddr)
 {
     // Message received on UDP socket, forward over TCP conn.
 
@@ -1082,7 +1080,7 @@ void swift::CmdGwTunnelUDPDataCameIn(Address srcaddr, uint32_t srcchan, struct e
     oss << "TUNNELRECV " << srcaddr.str();
     oss << "/" << std::hex << srcchan;
     oss << " " << std::dec << evbuffer_get_length(evb) ;
-    oss << " " << incoming_port << "\r\n";
+    oss << " " << destaddr.str() << "\r\n";
 
     std::stringbuf *pbuf=oss.rdbuf();
     size_t slen = strlen(pbuf->str().c_str());
@@ -1127,16 +1125,19 @@ void swift::CmdGwTunnelSendUDP(struct evbuffer *evb)
     }
     if (Channel::sock_count == 0)
     {
-        fprintf(stderr,"cmdgw: sendudp: no single UDP socket!");
+        fprintf(stderr,"cmdgw: sendudp: no UDP socket!");
         evbuffer_free(sendevbuf);
         return;
     }
 
     evutil_socket_t sock = Channel::sock_open[Channel::sock_count-1].sock;
-    if (cmd_tunnel_port > 0) {
+    if (cmd_tunnel_src_addr != Address()) {
     	for (int i = 0; i < Channel::sock_count; i++) {
     		evutil_socket_t s = Channel::sock_open[i].sock;
-    		if (cmd_tunnel_port == Channel::BoundAddress(s).port()) {
+    		// TODO: Implement better procedure to make sure that addresses are indeed the same
+    		// Compares ip and port, might not work for all ipv6 representations!!
+    		if (cmd_tunnel_src_addr.str().compare(Channel::BoundAddress(s).str()) == 0) {
+    		    fprintf(stderr, "Socket found!!: %s\n", cmd_tunnel_src_addr.str().c_str());
     			sock = s;
     		}
     	}
@@ -1144,6 +1145,6 @@ void swift::CmdGwTunnelSendUDP(struct evbuffer *evb)
     fprintf(stderr, "Socket: %s\n", Channel::BoundAddress(sock).str().c_str());
     int r = Channel::SendTo(sock,cmd_tunnel_dest_addr,sendevbuf);
 
-    cmd_tunnel_port = 0; // Reset to 0. Each packet should have defined an address.. Or not.
+    cmd_tunnel_src_addr = Address(); // Reset address. No default addresses...
     evbuffer_free(sendevbuf);
 }
