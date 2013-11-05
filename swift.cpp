@@ -506,11 +506,9 @@ int utf8main (int argc, char** argv)
 			evtimer_add(&evrescan, tint2tv(RESCAN_DIR_INTERVAL*TINT_SEC));
 		}
 
-
 		fprintf(stderr,"swift: Mainloop\n");
 		// Enter libevent mainloop
 		event_base_dispatch(Channel::evbase);
-
 		// event_base_loopexit() was called, shutting down
 	}
 
@@ -522,8 +520,12 @@ int utf8main (int argc, char** argv)
 	for (iter = tds.begin(); iter != tds.end(); iter++ )
 		swift::Close(*iter);
 
-	if (Channel::debug_file && Channel::debug_file != stderr)
+	Channel::delete_rules_and_tables();
+
+	if (Channel::debug_file && Channel::debug_file != stderr) {
+		fflush(Channel::debug_file);
 		fclose(Channel::debug_file);
+	}
 
 	swift::Shutdown();
 

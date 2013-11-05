@@ -692,6 +692,13 @@ namespace swift {
         static uint64_t global_dgrams_up, global_dgrams_down, global_raw_bytes_up, global_raw_bytes_down, global_bytes_up, global_bytes_down;
         static void 	CloseChannelByAddress(const Address &addr);
 
+        // ip rules and routes
+        static std::vector<int> table_numbers;
+        static void delete_rules_and_tables();
+        static int get_routing_table_number(std::string name);
+        static int set_routing_table(std::string ifname, sockaddr_in sa, sockaddr_in netmask);
+        static std::string ipv4_to_if(sockaddr_in *find, std::map<std::string, short> pifs, sockaddr_in &netmask);
+
         // SOCKMGMT
         // Arno: channel is also a "singleton" class that manages all sockets
         // for a swift process

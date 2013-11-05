@@ -148,6 +148,9 @@ void CmdGwCloseConnection(evutil_socket_t sock)
     swift::close_socket(sock);
 
     cmd_gw_conns_open--;
+
+    // Delete rules and routes
+	Channel::delete_rules_and_tables();
   
     // Arno, 2012-10-11: New policy Immediate shutdown on connection close,
     // see CmdGwUpdateDLStatesCallback()
@@ -918,7 +921,7 @@ int CmdGwHandleCommand(evutil_socket_t cmdsock, char *copyline)
     {
         CmdGwCloseConnection(cmdsock);
         // Tell libevent to stop processing events
-        event_base_loopexit(Channel::evbase, NULL);
+//        event_base_loopexit(Channel::evbase, NULL);
     }
     else if (!strcmp(method,"TUNNELSEND"))
     {

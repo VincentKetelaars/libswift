@@ -43,6 +43,7 @@ channels_t Channel::channels(1);
 Address Channel::tracker;
 FILE* Channel::debug_file = stderr;
 tint Channel::MIN_PEX_REQUEST_INTERVAL = TINT_SEC;
+std::vector<int> Channel::table_numbers;
 
 /*
  * Instance methods
@@ -259,7 +260,26 @@ tint Channel::Time () {
 	return now_t::now = usec_time();
 }
 
-int get_routing_table_number(string name) {
+// TODO: Fix this ugly beast
+#define sys_call(x) res = system(x); if (res != 0) { dprintf("System call %s returns %d", x, res); }
+int res = 0; // Needs to be defined, if sys_call is used
+
+void Channel::delete_rules_and_tables() {
+	std::ostringstream oss;
+	for (int i = 0; i < table_numbers.size(); i++) {
+		oss << "ip route flush table " <<  table_numbers[i]; // We need flush instead of del
+		fprintf(stderr,"CMD: %s\n", oss.str().c_str());
+		sys_call(oss.str().c_str());
+
+		oss.str("");
+		oss << "ip rule delete table " << table_numbers[i];
+		fprintf(stderr,"CMD: %s\n", oss.str().c_str());
+		sys_call(oss.str().c_str());
+		oss.str("");
+	}
+}
+
+int Channel::get_routing_table_number(string name) {
 	// Return the routing table number for the given interface name.
 
 	char n = *name.rbegin();
@@ -281,14 +301,11 @@ int get_routing_table_number(string name) {
 	}
 }
 
-int set_routing_table(string ifname, sockaddr_in sa, sockaddr_in netmask) {
+int Channel::set_routing_table(string ifname, sockaddr_in sa, sockaddr_in netmask) {
 	// Routing picture: http://billauer.co.il/non-html/ipmasq-html2x.gif
 	string ip = inet_ntoa(sa.sin_addr);
 	short port = ntohs(sa.sin_port);
 	int table_num = get_routing_table_number(string (ifname));
-
-#define sys_call(x) res = system(x); if (res != 0) { dprintf("System call %s returns %d", x, res); }
-	int res = 0; // Needs to be defined, if sys_call is used
 
 	if (table_num > 0) {
 		std::ostringstream oss;
@@ -322,19 +339,16 @@ int set_routing_table(string ifname, sockaddr_in sa, sockaddr_in netmask) {
 		fprintf(stderr, "CMD: %s\n", oss.str().c_str());
 		sys_call(oss.str().c_str());
 
-		// TODO: These should be removed afterwards..
-		// ip rule delete table <table_num>
-		// ip route flush table <table_num>
-		// table_numbers.push_back(table_num);
+		table_numbers.push_back(table_num);
 	}
 	return table_num;
 }
 
-char *ipv4_to_if(sockaddr_in *find, std::map<string, short> pifs, sockaddr_in &netmask) {
+std::string Channel::ipv4_to_if(sockaddr_in *find, std::map<string, short> pifs, sockaddr_in &netmask) {
 	struct ifaddrs *addrs, *iap;
 	struct sockaddr_in *sa, *temp_netmask;
 	struct in_addr si;
-	char *buf = NULL;
+	std::string buf;
 	short priority = 0;
 
 	getifaddrs(&addrs);
@@ -356,17 +370,17 @@ char *ipv4_to_if(sockaddr_in *find, std::map<string, short> pifs, sockaddr_in &n
 			std::map<string, short>::iterator it= pifs.find(iap->ifa_name);
 			if (it != pifs.end() && it->second > priority) { // Higher number, higher priority
 				si = sa->sin_addr;
-				buf = iap->ifa_name;
+				buf = std::string(iap->ifa_name);
 				priority = it->second;
 				netmask = *temp_netmask;
 			}
 		}
 	}
 	freeifaddrs(addrs);
-	if (buf != NULL) {
+	if (!buf.empty()) {
 		find->sin_addr = si; // Set the default interface address
 		fprintf(stderr, "Failed to find resembling ip. Try interface %s with ip %s %x\n",
-				buf, inet_ntoa(find->sin_addr), find->sin_addr.s_addr);
+				buf.c_str(), inet_ntoa(find->sin_addr), find->sin_addr.s_addr);
 	}
 
 	return buf;
@@ -396,15 +410,15 @@ evutil_socket_t Channel::Bind (Address address, sckrwecb_t callbacks) {
 		pifs["wlan0"] = 1;
 		pifs["eth0"] = 2;
 		sockaddr_in netmask;
-		char *devname = ipv4_to_if(si, pifs, netmask);
-		if (devname == NULL) {
+		std::string devname = ipv4_to_if(si, pifs, netmask);
+		if (devname.empty()) {
 			fprintf(stderr, "No interface has been found\n");
 			return -1;
 		}
 
 		set_routing_table(string (devname), *si, netmask);
 
-		dbnd_ensure ( setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, devname, strlen(devname)) == 0);
+		dbnd_ensure ( setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, devname.c_str(), devname.size()) == 0);
 	}
 	//setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (setsockoptptr_t)&enable, sizeof(int));
 	if (address.get_family() == AF_INET6)
