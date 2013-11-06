@@ -261,21 +261,19 @@ tint Channel::Time () {
 }
 
 // TODO: Fix this ugly beast
-#define sys_call(x) res = system(x); if (res != 0) { dprintf("System call %s returns %d", x, res); }
-int res = 0; // Needs to be defined, if sys_call is used
+#define sys_call(x) { fprintf(stderr,"%s\n",x); if (system(x) != 0) { \
+	fprintf(stderr,"I recommend getting the appropriate privileges for this setting\n"); } }
 
 void Channel::delete_rules_and_tables() {
 	std::ostringstream oss;
 	for (int i = 0; i < table_numbers.size(); i++) {
+		oss.str("");
 		oss << "ip route flush table " <<  table_numbers[i]; // We need flush instead of del
-		fprintf(stderr,"CMD: %s\n", oss.str().c_str());
 		sys_call(oss.str().c_str());
 
 		oss.str("");
 		oss << "ip rule delete table " << table_numbers[i];
-		fprintf(stderr,"CMD: %s\n", oss.str().c_str());
 		sys_call(oss.str().c_str());
-		oss.str("");
 	}
 }
 
@@ -310,13 +308,11 @@ int Channel::set_routing_table(string ifname, sockaddr_in sa, sockaddr_in netmas
 	if (table_num > 0) {
 		std::ostringstream oss;
 		oss << "ip route flush table " << table_num;
-		fprintf(stderr,"CMD: %s\n", oss.str().c_str());
 		sys_call(oss.str().c_str());
 
 		// By default the rule should be entered in the list with higher priority than the main table
 		oss.str("");
 		oss << "ip rule add from " << ip << " table " << table_num;
-		fprintf(stderr,"CMD: %s\n", oss.str().c_str());
 		sys_call(oss.str().c_str());
 
 		struct in_addr addr = sa.sin_addr;
@@ -329,14 +325,12 @@ int Channel::set_routing_table(string ifname, sockaddr_in sa, sockaddr_in netmas
 		// Is this one necessary? Probably in the case of point to point networks only.. So yeah.
 		oss.str("");
 		oss << "ip route add dev " << ifname.c_str() << " " << inet_ntoa(addr) << "/" << b.count() << " table " << table_num;
-		fprintf(stderr, "CMD: %s\n", oss.str().c_str());
 		sys_call(oss.str().c_str());
 
 		addr.s_addr |= 0x01000000; // Add one to the most significant byte to get the most likely address for the gateway
 
 		oss.str("");
 		oss << "ip route add dev " << ifname.c_str() << " default via " << inet_ntoa(addr) << " table " << table_num;
-		fprintf(stderr, "CMD: %s\n", oss.str().c_str());
 		sys_call(oss.str().c_str());
 
 		table_numbers.push_back(table_num);
@@ -418,7 +412,13 @@ evutil_socket_t Channel::Bind (Address address, sckrwecb_t callbacks) {
 
 		set_routing_table(string (devname), *si, netmask);
 
-		dbnd_ensure ( setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, devname.c_str(), devname.size()) == 0);
+		if ( setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, devname.c_str(), devname.size()) < 0) {
+			if (errno == 1) {
+				perror("I recommend getting permission to set SO_BINDTODEVICE");
+			} else {
+				perror("Failed to set SO_BINDTODEVICE");
+			}
+		}
 	}
 	//setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (setsockoptptr_t)&enable, sizeof(int));
 	if (address.get_family() == AF_INET6)
