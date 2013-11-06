@@ -1145,6 +1145,8 @@ namespace swift {
     /** Stop listening to a port. */
     /** Get the address bound to the socket descriptor returned by Listen() */
     Address BoundAddress(evutil_socket_t sock);
+    /** Clean up after event base is stopped **/
+    void	CleanAndClose();
     void    Shutdown();
     /** Open a file, start a transmission; fill it with content for a given
         root hash and tracker (optional). If "force_check_diskvshash" is true, the

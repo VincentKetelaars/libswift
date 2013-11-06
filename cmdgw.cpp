@@ -149,13 +149,14 @@ void CmdGwCloseConnection(evutil_socket_t sock)
 
     cmd_gw_conns_open--;
 
-    // Delete rules and routes
-	Channel::delete_rules_and_tables();
   
     // Arno, 2012-10-11: New policy Immediate shutdown on connection close,
     // see CmdGwUpdateDLStatesCallback()
     fprintf(stderr,"cmd: Shutting down on CMD connection close\n");
     event_base_loopexit(Channel::evbase, NULL);
+
+    // Clean up the rest
+	swift::CleanAndClose();
 }
 
 

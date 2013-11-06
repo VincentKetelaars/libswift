@@ -58,6 +58,22 @@ int     swift::Listen( Address addr)
     return cb.sock;
 }
 
+void swift::CleanAndClose() {
+	// Arno, 2012-01-03: Close all transfers
+	tdlist_t tds = GetTransferDescriptors();
+	tdlist_t::iterator iter;
+	for (iter = tds.begin(); iter != tds.end(); iter++ )
+		swift::Close(*iter);
+
+	Channel::delete_rules_and_tables();
+
+	if (Channel::debug_file && Channel::debug_file != stderr) {
+		fflush(Channel::debug_file);
+		fclose(Channel::debug_file);
+	}
+
+	swift::Shutdown();
+}
 
 void    swift::Shutdown()
 {

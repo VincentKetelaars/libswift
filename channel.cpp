@@ -262,7 +262,7 @@ tint Channel::Time () {
 
 // TODO: Fix this ugly beast
 #define sys_call(x) { fprintf(stderr,"%s\n",x); if (system(x) != 0) { \
-	fprintf(stderr,"I recommend getting the appropriate privileges for this setting\n"); } }
+	fprintf(stderr,"This setting is necessary for the program to execute correctly\n"); } }
 
 void Channel::delete_rules_and_tables() {
 	std::ostringstream oss;
