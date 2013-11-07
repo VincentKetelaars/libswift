@@ -316,6 +316,19 @@ tdlist_t swift::GetTransferDescriptors()
     return filetdl;
 }
 
+std::vector<Sha1Hash> swift::GetActiveSwarmsRoothashes()
+{
+    if (api_debug)
+    	fprintf(stderr,"swift::GetActiveSwarms\n" );
+    std::vector<SwarmData*> swarms = SwarmManager::GetManager().GetActiveSwarms();
+    // TODO: Add livetransfers
+    std::vector<Sha1Hash> hashes = std::vector<Sha1Hash>();
+    std::vector<SwarmData*>::iterator iter;
+    for (iter=swarms.begin(); iter != swarms.end(); iter++) {
+    	hashes.push_back((*iter)->RootHash());
+    }
+    return hashes;
+}
 
 void swift::SetMaxSpeed(int td, data_direction_t ddir, double speed)
 {
@@ -589,10 +602,10 @@ int swift::Seek(int td, int64_t offset, int whence)
 
 
 
-void swift::AddPeer(Address& addr, const Sha1Hash& swarmid)
+void swift::AddPeer(Address& addr, const Sha1Hash& swarmid, int fd)
 {
     if (api_debug)
-	fprintf(stderr,"swift::AddPeer addr %s hash %s\n", addr.str().c_str(), swarmid.hex().c_str() );
+	fprintf(stderr,"swift::AddPeer addr %s hash %s fd %d\n", addr.str().c_str(), swarmid.hex().c_str(), fd );
 
     ContentTransfer *ct = NULL;
     SwarmData* swarm = SwarmManager::GetManager().FindSwarm(swarmid);
@@ -611,8 +624,14 @@ void swift::AddPeer(Address& addr, const Sha1Hash& swarmid)
     }
     if (ct == NULL)
 	return;
-    else
-	ct->AddPeer(addr);
+    else {
+    	// TODO: This is not proper solution, should be separate methods
+    	if (fd < 0 && addr != Address()) { // Add this peer to all sockets
+    		ct->AddPeer(addr);
+    	} else { // Add all known peers for this transfer to this socket
+    		ct->AddPeers(fd);
+    	}
+    }
     // FIXME: When cached addresses are supported in swapped-out swarms, add the peer to that cache instead
 }
 

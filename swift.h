@@ -447,6 +447,9 @@ namespace swift {
         /** Add a peer to the set of addresses to connect to */
         void            AddPeer(Address &peer);
 
+        /** Add peers to this socket */
+        void 			AddPeers(int fd);
+
         /** Ric: add number of hints for slow start scenario */
         void            SetSlowStartHints(uint32_t hints) { slow_start_hints_ += hints; }
         /** Ric: get the # of slow start hints */
@@ -499,6 +502,8 @@ namespace swift {
         // Ric: slow start 4 requesting hints
         uint32_t        slow_start_hints_;
 
+        // Peers for this transfer
+        std::vector<Address> peers;
     };
 
 
@@ -709,6 +714,7 @@ namespace swift {
         static int      SendTo(evutil_socket_t sock, const Address& addr, struct evbuffer *evb); // Called by Channel::Send()
         static evutil_socket_t Bind(Address address, sckrwecb_t callbacks=sckrwecb_t());
         static Address  BoundAddress(evutil_socket_t sock);
+        static int 		GetSocket(Address &saddr);
         static evutil_socket_t default_socket()
             { return sock_count ? sock_open[0].sock : INVALID_SOCKET; }
 
@@ -1169,7 +1175,7 @@ namespace swift {
     /** Add a possible peer which participares in a given transmission. In the case
         root hash is zero, the peer might be talked to regarding any transmission
         (likely, a tracker, cache or an archive). */
-    void    AddPeer( Address& address, const Sha1Hash& root=Sha1Hash::ZERO);
+    void    AddPeer( Address& address, const Sha1Hash& root=Sha1Hash::ZERO, int fd = -1);
 
     /** UNIX pread approximation. Does change file pointer. Thread-safe if no concurrent writes. Autoactivates */
     ssize_t Read( int td, void *buf, size_t nbyte, int64_t offset); // off_t not 64-bit dynamically on Win32
@@ -1217,6 +1223,8 @@ namespace swift {
 
     /** Return the transfer descriptors of all loaded transfers (incl. LIVE). */
     tdlist_t GetTransferDescriptors();
+    /** Return the active swarms*/
+    std::vector<Sha1Hash> GetActiveSwarmsRoothashes();
     /** Set the maximum speed in bytes/s for the transfer */
     void    SetMaxSpeed( int td, data_direction_t ddir, double speed);
     /** Get the current speed in bytes/s for the transfer, if activated. */

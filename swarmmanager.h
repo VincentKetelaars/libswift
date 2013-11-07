@@ -170,6 +170,9 @@ namespace swift {
 
         // Arno
         tdlist_t GetTransferDescriptors();
+
+        //Vincent
+        std::vector<SwarmData*> GetActiveSwarms();
         // Arno: Called periodically to deactivate unused swarms, even if max not reached
         void DeactivateIdleSwarms();
 

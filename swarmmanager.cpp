@@ -825,6 +825,10 @@ tdlist_t SwarmManager::GetTransferDescriptors()
     return tdl;
 }
 
+std::vector<SwarmData*> SwarmManager::GetActiveSwarms() {
+	return activeSwarms_;
+}
+
 
 
 SwarmManager::Iterator::Iterator() {

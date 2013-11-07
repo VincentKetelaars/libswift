@@ -36,7 +36,7 @@ ContentTransfer::ContentTransfer(transfer_t ttype) :  ttype_(ttype), mychannels_
     speedupcount_(0), speeddwcount_(0), tracker_(),
     tracker_retry_interval_(TRACKER_RETRY_INTERVAL_START),
     tracker_retry_time_(NOW),
-    slow_start_hints_(0)
+    slow_start_hints_(0), peers()
 {
     cur_speed_[DDIR_UPLOAD] = MovingAverageSpeed();
     cur_speed_[DDIR_DOWNLOAD] = MovingAverageSpeed();
@@ -306,8 +306,24 @@ uint32_t   ContentTransfer::GetNumSeeders()
 
 void ContentTransfer::AddPeer(Address &peer)
 {
+	// Only add peers ones
+	if(std::find(peers.begin(), peers.end(), peer) != peers.end()) {
+	    return;
+	}
+	peers.push_back(peer);
+	perror("Is there a recent error?");
+	fprintf(stderr, "CT AddPeer %s\n", peer.str().c_str());
 	for (int i = 0; i < Channel::sock_count; i++) {
 		Channel *c = new Channel(this,Channel::sock_open[i].sock,peer);
+	}
+}
+
+void ContentTransfer::AddPeers(int fd)
+{
+	// Create a channel for this socket for each peer
+	std::vector<Address>::iterator iter;
+	for (iter=peers.begin(); iter!=peers.end(); iter++) {
+		Channel *c = new Channel(this,fd,*iter);
 	}
 }
 
