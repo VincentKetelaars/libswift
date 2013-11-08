@@ -241,7 +241,7 @@ void CmdGwGotPEERADDR(Sha1Hash &want_hash, Address &peer, Address &saddr)
 	if (req == NULL)
 		return;
 	int fd = Channel::GetSocket(saddr); // Will return -1 if Address()
-	swift::AddPeer(peer, want_hash, fd);
+	swift::AddPeer(peer, fd, want_hash);
 }
 
 void CmdGwGotADDSOCKET(Address &saddr, Sha1Hash &want_hash)
@@ -252,12 +252,12 @@ void CmdGwGotADDSOCKET(Address &saddr, Sha1Hash &want_hash)
 	swift::Address peer = swift::Address();
 	if (want_hash!=Sha1Hash::ZERO) {
 		// Could do a hash check, but will be done in AddPeer anyway
-		swift::AddPeer(peer, want_hash, fd);
+		swift::AddPeer(peer, fd, want_hash);
 	} else {
 		std::vector<Sha1Hash> hashes = swift::GetActiveSwarmsRoothashes();
 		std::vector<Sha1Hash>::iterator iter;
 		for (iter=hashes.begin(); iter!=hashes.end(); iter++) {
-			swift::AddPeer(peer, *iter, fd);
+			swift::AddPeer(peer, fd, *iter);
 		}
 	}
 }

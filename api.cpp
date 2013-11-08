@@ -59,6 +59,8 @@ int     swift::Listen( Address addr)
 }
 
 void swift::CleanAndClose() {
+	if (api_debug)
+		fprintf(stderr,"swift::CleanAndClose\n");
 	// Arno, 2012-01-03: Close all transfers
 	tdlist_t tds = GetTransferDescriptors();
 	tdlist_t::iterator iter;
@@ -78,7 +80,7 @@ void swift::CleanAndClose() {
 void    swift::Shutdown()
 {
     if (api_debug)
-	fprintf(stderr,"swift::Shutdown");
+	fprintf(stderr,"swift::Shutdown\n");
 
     Channel::Shutdown();
 }
@@ -602,7 +604,7 @@ int swift::Seek(int td, int64_t offset, int whence)
 
 
 
-void swift::AddPeer(Address& addr, const Sha1Hash& swarmid, int fd)
+void swift::AddPeer(Address& addr, int fd, const Sha1Hash& swarmid)
 {
     if (api_debug)
 	fprintf(stderr,"swift::AddPeer addr %s hash %s fd %d\n", addr.str().c_str(), swarmid.hex().c_str(), fd );
@@ -625,12 +627,7 @@ void swift::AddPeer(Address& addr, const Sha1Hash& swarmid, int fd)
     if (ct == NULL)
 	return;
     else {
-    	// TODO: This is not proper solution, should be separate methods
-    	if (fd < 0 && addr != Address()) { // Add this peer to all sockets
-    		ct->AddPeer(addr);
-    	} else { // Add all known peers for this transfer to this socket
-    		ct->AddPeers(fd);
-    	}
+		ct->AddPeer(addr, fd);
     }
     // FIXME: When cached addresses are supported in swapped-out swarms, add the peer to that cache instead
 }

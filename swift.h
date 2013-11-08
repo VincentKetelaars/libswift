@@ -445,10 +445,7 @@ namespace swift {
         Storage *       GetStorage() { return storage_; }
 
         /** Add a peer to the set of addresses to connect to */
-        void            AddPeer(Address &peer);
-
-        /** Add peers to this socket */
-        void 			AddPeers(int fd);
+        void            AddPeer(Address &peer, int fd);
 
         /** Ric: add number of hints for slow start scenario */
         void            SetSlowStartHints(uint32_t hints) { slow_start_hints_ += hints; }
@@ -1175,7 +1172,7 @@ namespace swift {
     /** Add a possible peer which participares in a given transmission. In the case
         root hash is zero, the peer might be talked to regarding any transmission
         (likely, a tracker, cache or an archive). */
-    void    AddPeer( Address& address, const Sha1Hash& root=Sha1Hash::ZERO, int fd = -1);
+    void    AddPeer( Address& address, int fd, const Sha1Hash& root=Sha1Hash::ZERO);
 
     /** UNIX pread approximation. Does change file pointer. Thread-safe if no concurrent writes. Autoactivates */
     ssize_t Read( int td, void *buf, size_t nbyte, int64_t offset); // off_t not 64-bit dynamically on Win32
