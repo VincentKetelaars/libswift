@@ -414,6 +414,19 @@ void CmdGwSendERRORBySocket(evutil_socket_t cmdsock, std::string msg, const Sha1
 }
 
 
+void CmdGwSendSOCKERRORBySocket(evutil_socket_t cmdsock, Address sock_addr, int err)
+{
+	std::ostringstream oss;
+	oss << "SOCKERROR " << sock_addr.ipstr(true) << " " << err << "\r\n";
+
+	if (cmd_gw_debug)
+		fprintf(stderr,"cmd: SendSOCKERROR: %s\n", oss.str().c_str() );
+
+	char *wire = strdup(oss.str().c_str());
+	send(cmdsock,wire,strlen(wire),0);
+	free(wire);
+}
+
 /*
  * For VOD and Live, wait until PREBUF_BYTES are in before sending PLAY.
  */
@@ -1087,6 +1100,7 @@ void CmdGwListenErrorCallback(struct evconnlistener *listener, void *ctx)
 	evconnlistener_free(cmd_evlistener);
 }
 
+void onSendToErrorCallback(evutil_socket_t sock, int err);
 
 bool InstallCmdGateway (struct event_base *evbase,Address cmdaddr,Address httpaddr)
 {
@@ -1109,6 +1123,8 @@ bool InstallCmdGateway (struct event_base *evbase,Address cmdaddr,Address httpad
 	cmd_gw_httpaddr = httpaddr;
 
 	cmd_evbuffer = evbuffer_new();
+
+	Channel::SetOnSendToErrorCallback(onSendToErrorCallback);
 
 	return true;
 }
@@ -1192,4 +1208,12 @@ void swift::CmdGwTunnelSendUDP(struct evbuffer *evb)
 
 	cmd_tunnel_src_addr = Address(); // Reset address. No default addresses...
 	evbuffer_free(sendevbuf);
+}
+
+void onSendToErrorCallback(evutil_socket_t sock, int err) {
+	Address sock_addr = swift::BoundAddress(sock);
+	fprintf(stderr, "SendError %s %d\n", sock_addr.ipstr(true).c_str(), err);
+	if (sock_addr != Address()) {
+		CmdGwSendSOCKERRORBySocket(cmd_tunnel_sock, sock_addr, err);
+	}
 }

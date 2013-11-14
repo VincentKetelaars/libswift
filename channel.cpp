@@ -44,6 +44,7 @@ Address Channel::tracker;
 FILE* Channel::debug_file = stderr;
 tint Channel::MIN_PEX_REQUEST_INTERVAL = TINT_SEC;
 std::vector<int> Channel::table_numbers;
+void (*Channel::onSendToErrorCallback)(evutil_socket_t, int);
 
 /*
  * Instance methods
@@ -471,6 +472,10 @@ int Channel::GetSocket(Address &saddr) {
 	return -1;
 }
 
+void Channel::SetOnSendToErrorCallback(void (*callback)(evutil_socket_t, int)) {
+	Channel::onSendToErrorCallback = callback;
+}
+
 
 int Channel::SendTo (evutil_socket_t sock, const Address& addr, struct evbuffer *evb) {
 	int length = evbuffer_get_length(evb);
@@ -478,8 +483,9 @@ int Channel::SendTo (evutil_socket_t sock, const Address& addr, struct evbuffer 
 			(struct sockaddr*)&(addr.addr),addr.get_real_sockaddr_length());
 	// SCHAAP: 2012-06-16 - How about EAGAIN and EWOULDBLOCK? Do we just drop the packet then as well?
 	if (r<0) {
+		if (Channel::onSendToErrorCallback)
+			Channel::onSendToErrorCallback(sock, errno); // evutil_socket_t sock, short event, void *args
 		print_error("can't send");
-		fprintf(stderr, "Socket: %s\n", Channel::BoundAddress(sock).str().c_str());
 		evbuffer_drain(evb, length); // Arno: behaviour is to pretend the packet got lost
 	}
 	else

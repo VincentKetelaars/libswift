@@ -722,6 +722,9 @@ namespace swift {
         static tint     Time();
         static tint 	last_tick;
 
+        // Callback
+        static void		(*onSendToErrorCallback)(evutil_socket_t, int);
+        static void		SetOnSendToErrorCallback(void (*callback)(evutil_socket_t, int));
 
         // Ric: used for testing LEDBAT's behaviour
         float		GetCwnd() { return cwnd_; }
