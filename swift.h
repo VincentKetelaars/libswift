@@ -722,6 +722,15 @@ namespace swift {
         static tint     Time();
         static tint 	last_tick;
 
+        // Socket if info
+        struct socket_if_info {
+        	std::string name;
+        	int err;
+        	socket_if_info() {}
+        	socket_if_info(std::string name) : name(name), err() {}
+        };
+        static std::map<evutil_socket_t, socket_if_info> socket_if_info_map;
+
         // Callback
         static void		(*onSendToErrorCallback)(evutil_socket_t, int);
         static void		SetOnSendToErrorCallback(void (*callback)(evutil_socket_t, int));
