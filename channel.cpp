@@ -280,6 +280,9 @@ void Channel::delete_rules_and_tables() {
 int Channel::get_routing_table_number(string name) {
 	// Return the routing table number for the given interface name.
 
+	if (name == "lo") {
+		return -1;
+	}
 	char n = *name.rbegin();
 	int number = n - '0';
 	if (number < 0 || number > 9) {
@@ -476,6 +479,7 @@ int Channel::SendTo (evutil_socket_t sock, const Address& addr, struct evbuffer 
 	// SCHAAP: 2012-06-16 - How about EAGAIN and EWOULDBLOCK? Do we just drop the packet then as well?
 	if (r<0) {
 		print_error("can't send");
+		fprintf(stderr, "Socket: %s\n", Channel::BoundAddress(sock).str().c_str());
 		evbuffer_drain(evb, length); // Arno: behaviour is to pretend the packet got lost
 	}
 	else

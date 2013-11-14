@@ -338,6 +338,11 @@ void CmdGwSendINFO(cmd_gw_t* req, int dlstatus)
 				if (iter!=peerchans->begin())
 					oss << ", ";
 				oss << "{";
+				Address sock_addr = swift::BoundAddress(c->GetSocket());
+				if (sock_addr != Address()) {
+					oss << "\"socket_ip\": \"" << sock_addr.ipstr() << "\", ";
+					oss << "\"socket_port\": \"" << sock_addr.port() << "\", ";
+				}
 				oss << "\"ip\": \"" << c->peer().ipstr() << "\", ";
 				oss << "\"port\": " << c->peer().port() << ", ";
 				oss << "\"raw_bytes_up\": " << c->raw_bytes_up() << ", ";
@@ -605,7 +610,7 @@ void CmdGwDataCameInCallback(struct bufferevent *bev, void *ctx)
 	int totlen = evbuffer_get_length(cmd_evbuffer);
 
 	//if (cmd_gw_debug)
-		//    fprintf(stderr,"cmdgw: TCPDataCameIn: State %d, got %d new bytes, have %d want %d\n", (int)cmd_tunnel_state, inlen, totlen, cmd_tunnel_expect );
+	//    fprintf(stderr,"cmdgw: TCPDataCameIn: State %d, got %d new bytes, have %d want %d\n", (int)cmd_tunnel_state, inlen, totlen, cmd_tunnel_expect );
 
 	CmdGwProcessData(cmdsock);
 }
