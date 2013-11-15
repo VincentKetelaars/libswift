@@ -155,6 +155,7 @@ void CmdGwCloseConnection(evutil_socket_t sock)
 	fprintf(stderr,"cmd: Shutting down on CMD connection close\n");
 	event_base_loopexit(Channel::evbase, NULL);
 
+	// FIXME: We shouldn't have to call this. But sometimes we need to and sometimes we don't
 	// Clean up the rest
 	swift::CleanAndClose();
 }
@@ -414,13 +415,13 @@ void CmdGwSendERRORBySocket(evutil_socket_t cmdsock, std::string msg, const Sha1
 }
 
 
-void CmdGwSendSOCKERRORBySocket(evutil_socket_t cmdsock, Address sock_addr, int err)
+void CmdGwSendSOCKETINFOBySocket(evutil_socket_t cmdsock, Address sock_addr, int err)
 {
 	std::ostringstream oss;
-	oss << "SOCKERROR " << sock_addr.ipstr(true) << " " << err << "\r\n";
+	oss << "SOCKETINFO " << sock_addr.ipstr(true) << " " << err << "\r\n";
 
 	if (cmd_gw_debug)
-		fprintf(stderr,"cmd: SendSOCKERROR: %s\n", oss.str().c_str() );
+		fprintf(stderr,"cmd: SendSOCKETINFO: %s\n", oss.str().c_str() );
 
 	char *wire = strdup(oss.str().c_str());
 	send(cmdsock,wire,strlen(wire),0);
@@ -1100,7 +1101,12 @@ void CmdGwListenErrorCallback(struct evconnlistener *listener, void *ctx)
 	evconnlistener_free(cmd_evlistener);
 }
 
-void onSendToErrorCallback(evutil_socket_t sock, int err);
+void onSendToInfoCallback(evutil_socket_t sock, int err) {
+	Address sock_addr = swift::BoundAddress(sock);
+	if (sock_addr != Address()) {
+		CmdGwSendSOCKETINFOBySocket(cmd_tunnel_sock, sock_addr, err);
+	}
+}
 
 bool InstallCmdGateway (struct event_base *evbase,Address cmdaddr,Address httpaddr)
 {
@@ -1124,7 +1130,7 @@ bool InstallCmdGateway (struct event_base *evbase,Address cmdaddr,Address httpad
 
 	cmd_evbuffer = evbuffer_new();
 
-	Channel::SetOnSendToErrorCallback(onSendToErrorCallback);
+	Channel::SetOnSendToInfoCallback(onSendToInfoCallback);
 
 	return true;
 }
@@ -1208,12 +1214,4 @@ void swift::CmdGwTunnelSendUDP(struct evbuffer *evb)
 
 	cmd_tunnel_src_addr = Address(); // Reset address. No default addresses...
 	evbuffer_free(sendevbuf);
-}
-
-void onSendToErrorCallback(evutil_socket_t sock, int err) {
-	Address sock_addr = swift::BoundAddress(sock);
-	fprintf(stderr, "SendError %s %d\n", sock_addr.ipstr(true).c_str(), err);
-	if (sock_addr != Address()) {
-		CmdGwSendSOCKERRORBySocket(cmd_tunnel_sock, sock_addr, err);
-	}
 }

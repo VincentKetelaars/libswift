@@ -44,7 +44,7 @@ Address Channel::tracker;
 FILE* Channel::debug_file = stderr;
 tint Channel::MIN_PEX_REQUEST_INTERVAL = TINT_SEC;
 std::vector<int> Channel::table_numbers;
-void (*Channel::onSendToErrorCallback)(evutil_socket_t, int);
+void (*Channel::onSendToInfoCallback)(evutil_socket_t, int);
 std::map<evutil_socket_t, Channel::socket_if_info> Channel::socket_if_info_map;
 
 /*
@@ -216,7 +216,7 @@ bool Channel::IsDiffSenderOrDuplicate(Address addr, uint32_t chid)
 			//
 			recv_peer_ = addr;
 
-			Channel *c = transfer()->FindChannel(addr,this);
+			Channel *c = transfer()->FindChannel(socket_, addr, this);
 			if (c == NULL)
 				return false;
 
@@ -264,7 +264,7 @@ tint Channel::Time () {
 
 // TODO: Fix this ugly beast
 #define sys_call(x) { fprintf(stderr,"%s\n",x); if (system(x) != 0) { \
-		fprintf(stderr,"This setting is necessary for the program to execute correctly\n"); } }
+		fprintf(stderr,"System call failed\n"); } }
 
 void Channel::delete_rules_and_tables() {
 	std::ostringstream oss;
@@ -476,8 +476,8 @@ int Channel::GetSocket(Address &saddr) {
 	return -1;
 }
 
-void Channel::SetOnSendToErrorCallback(void (*callback)(evutil_socket_t, int)) {
-	Channel::onSendToErrorCallback = callback;
+void Channel::SetOnSendToInfoCallback(void (*callback)(evutil_socket_t, int)) {
+	Channel::onSendToInfoCallback = callback;
 }
 
 
@@ -489,16 +489,19 @@ int Channel::SendTo (evutil_socket_t sock, const Address& addr, struct evbuffer 
 	if (r<0) {
 		if (Channel::socket_if_info_map[sock].err != errno) {
 			Channel::socket_if_info_map[sock].err = errno;
-			if (Channel::onSendToErrorCallback)
-				Channel::onSendToErrorCallback(sock, errno); // evutil_socket_t sock, short event, void *args
+			if (Channel::onSendToInfoCallback)
+				Channel::onSendToInfoCallback(sock, errno); // evutil_socket_t sock, short event, void *args
 		}
 		print_error("can't send");
 		evbuffer_drain(evb, length); // Arno: behaviour is to pretend the packet got lost
 	}
 	else {
 		evbuffer_drain(evb,r);
-		if (Channel::socket_if_info_map[sock].err != 0)
+		if (Channel::socket_if_info_map[sock].err != 0) {
 			Channel::socket_if_info_map[sock].err = 0;
+			if (Channel::onSendToInfoCallback)
+				Channel::onSendToInfoCallback(sock, 0); // evutil_socket_t sock, short event, void *args
+		}
 	}
 	global_dgrams_up++;
 	global_raw_bytes_up+=length;
@@ -547,15 +550,18 @@ int Channel::RecvFrom (evutil_socket_t sock, Address& addr, struct evbuffer *evb
 
 
 void Channel::CloseSocket(evutil_socket_t sock) {
-	for(int i=0; i<sock_count; i++)
-		if (sock_open[i].sock==sock)
+	for(int i=0; i<sock_count; i++) {
+		if (sock_open[i].sock==sock) {
 			sock_open[i] = sock_open[--sock_count];
+			socket_if_info_map.erase(sock);
+		}
+	}
 	if (!close_socket(sock))
 		print_error("on closing a socket");
 }
 
 void Channel::Shutdown () {
-	while (sock_count--)
+	while (sock_count-- >= 0)
 		CloseSocket(sock_open[sock_count].sock);
 }
 

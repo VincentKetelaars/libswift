@@ -413,7 +413,7 @@ namespace swift {
         // Gertjan
         Channel *       RandomChannel(Channel *notc);
         /** Arno: Return the Channel to peer "addr" that is not equal to "notc". */
-        Channel *       FindChannel(const Address &addr, Channel *notc);
+        Channel *       FindChannel(evutil_socket_t sock, const Address &addr, Channel *notc);
         void            CloseChannels(channels_t delset); // do not pass by reference
         void            GarbageCollectChannels();
 
@@ -732,8 +732,8 @@ namespace swift {
         static std::map<evutil_socket_t, socket_if_info> socket_if_info_map;
 
         // Callback
-        static void		(*onSendToErrorCallback)(evutil_socket_t, int);
-        static void		SetOnSendToErrorCallback(void (*callback)(evutil_socket_t, int));
+        static void		(*onSendToInfoCallback)(evutil_socket_t, int);
+        static void		SetOnSendToInfoCallback(void (*callback)(evutil_socket_t, int));
 
         // Ric: used for testing LEDBAT's behaviour
         float		GetCwnd() { return cwnd_; }

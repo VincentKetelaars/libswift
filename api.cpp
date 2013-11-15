@@ -38,8 +38,19 @@ void StartLibraryCleanup()
  * Global Operations
  */
 
-int     swift::Listen( Address addr)
+int     swift::Listen(Address addr)
 {
+	evutil_socket_t sock  = Channel::GetSocket(addr);
+	if (sock != -1) {
+		fprintf(stderr, "Socket %s is already running!", addr.ipstr(true).c_str());
+		if (Channel::socket_if_info_map[sock].err != 0) {
+			fprintf(stderr, "This socket has problems, so we will replace it!");
+			Channel::CloseSocket(sock);
+			// FIXME: What will happen to the channels we used with sock?
+		}
+	}
+
+
 	struct event *evrecv = new struct event;
     if (api_debug)
         fprintf(stderr,"swift::Listen addr %s\n", addr.str().c_str() );

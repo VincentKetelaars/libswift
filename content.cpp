@@ -332,14 +332,14 @@ void ContentTransfer::AddPeer(Address &peer, int fd)
 }
 
 
-Channel * ContentTransfer::FindChannel(const Address &addr, Channel *notc)
+Channel * ContentTransfer::FindChannel(evutil_socket_t sock, const Address &addr, Channel *notc)
 {
 	channels_t::iterator iter;
 	for (iter=mychannels_.begin(); iter!=mychannels_.end(); iter++)
 	{
 		Channel *c = *iter;
 		if (c != NULL) {
-			if (c != notc && (c->peer() == addr || c->recv_peer() == addr)) {
+			if (c != notc && c->GetSocket() == sock && (c->peer() == addr || c->recv_peer() == addr)) {
 				return c;
 			}
 		}
