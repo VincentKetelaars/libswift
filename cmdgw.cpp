@@ -238,6 +238,7 @@ void CmdGwGotSETMOREINFO(Sha1Hash &want_hash, bool enable)
 
 void CmdGwGotPEERADDR(Sha1Hash &want_hash, Address &peer, Address &saddr)
 {
+	// If saddr is a local socket it will only add the peer to that socket
 	cmd_gw_t* req = CmdGwFindRequestBySwarmID(want_hash);
 	if (req == NULL)
 		return;
@@ -245,22 +246,11 @@ void CmdGwGotPEERADDR(Sha1Hash &want_hash, Address &peer, Address &saddr)
 	swift::AddPeer(peer, fd, want_hash);
 }
 
-void CmdGwGotADDSOCKET(Address &saddr, Sha1Hash &want_hash)
+void CmdGwGotADDSOCKET(Address &saddr, std::string if_name, std::string device)
 {
-	fprintf(stderr, "ADDSOCKET %s %s", saddr.str().c_str(), want_hash);
-	int fd = swift::Listen(saddr);
-	// fd will be real socket otherwise Bind would quit
-	swift::Address peer = swift::Address();
-	if (want_hash!=Sha1Hash::ZERO) {
-		// Could do a hash check, but will be done in AddPeer anyway
-		swift::AddPeer(peer, fd, want_hash);
-	} else {
-		std::vector<Sha1Hash> hashes = swift::GetActiveSwarmsRoothashes();
-		std::vector<Sha1Hash>::iterator iter;
-		for (iter=hashes.begin(); iter!=hashes.end(); iter++) {
-			swift::AddPeer(peer, fd, *iter);
-		}
-	}
+	// Create a new socket
+	fprintf(stderr, "ADDSOCKET %s %s %s\n", saddr.str().c_str(), if_name.c_str(), device.c_str());
+	int fd = swift::Listen(saddr, if_name, device);
 }
 
 
@@ -1020,19 +1010,23 @@ int CmdGwHandleCommand(evutil_socket_t cmdsock, char *copyline)
 	}
 	else if (!strcmp(method,"ADDSOCKET"))
 	{
-		// ADDSOCKET ip:port roothash\r\n
-		token = strtok_r(paramstr," ",&savetok); // hash
-		if (token == NULL)
-			return ERROR_MISS_ARG;
-		char *hashstr = token;
-		token = strtok_r(NULL," ",&savetok);      // bool
+		// ADDSOCKET ip:port if_name device_name\r\n
+		token = strtok_r(paramstr," ",&savetok); // address
 		if (token == NULL)
 			return ERROR_MISS_ARG;
 		char *addrstr = token;
+		token = strtok_r(NULL," ",&savetok); // interface name
+		std::string if_name = UNKNOWN_INTERFACE;
+		if (token != NULL)
+			if_name.assign(token);
+		token = strtok_r(NULL," ",&savetok); // device name
+		std::string device_name = UNKNOWN_INTERFACE;
+		if (token != NULL)
+			device_name.assign(token);
+
 		Address saddr = Address(addrstr);
-		Sha1Hash swarm_id = Sha1Hash(true,hashstr);
 		if (saddr != Address()) {
-			CmdGwGotADDSOCKET(saddr, swarm_id);
+			CmdGwGotADDSOCKET(saddr, if_name, device_name);
 		}
 	}
 	else

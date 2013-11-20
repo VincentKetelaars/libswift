@@ -52,33 +52,33 @@ std::map<evutil_socket_t, Channel::socket_if_info> Channel::socket_if_info_map;
  */
 
 Channel::Channel(ContentTransfer* transfer, int socket, Address peer_addr,bool peerissource) :
-    								// Arno, 2011-10-03: Reordered to avoid g++ Wall warning
-    								peer_(peer_addr), socket_(socket==INVALID_SOCKET?default_socket():socket), // FIXME
-    								transfer_(transfer), own_id_mentioned_(false),
-    								data_in_(TINT_NEVER,bin_t::NONE), data_in_dbl_(bin_t::NONE),
-    								data_out_cap_(bin_t::ALL),hint_in_size_(0), hint_out_size_(0),
-    								// Gertjan fix 996e21e8abfc7d88db3f3f8158f2a2c4fc8a8d3f
-    								// "Changed PEX rate limiting to per channel limiting"
-    								pex_requested_(false),  // Ric: init var that wasn't initialiazed
-    								last_pex_request_time_(0), next_pex_request_time_(0),
-    								pex_request_outstanding_(false),
-    								useless_pex_count_(0),
-    								rtt_avg_(TINT_SEC), dev_avg_(0), dip_avg_(TINT_SEC),
-    								last_send_time_(0), last_recv_time_(0), last_data_out_time_(0), last_data_in_time_(0),
-    								last_loss_time_(0), next_send_time_(0), open_time_(NOW), cwnd_(1),
-    								cwnd_count1_(0), send_interval_(TINT_SEC),
-    								send_control_(PING_PONG_CONTROL), sent_since_recv_(0),
-    								lastrecvwaskeepalive_(false), lastsendwaskeepalive_(false), // Arno: nap bug fix
-    								live_have_no_hint_(false), // Arno: live speed opt
-    								ack_rcvd_recent_(0),
-    								ack_not_rcvd_recent_(0), owd_min_bin_(0), owd_min_bin_start_(NOW),
-    								owd_cur_bin_(0), dgrams_sent_(0), dgrams_rcvd_(0),
-    								raw_bytes_up_(0), raw_bytes_down_(0), bytes_up_(0), bytes_down_(0),
-    								scheduled4del_(false),
-    								direct_sending_(false),
-    								peer_is_source_(peerissource),
-    								hs_out_(NULL), hs_in_(NULL),
-    								rtt_hint_tintbin_()
+    														// Arno, 2011-10-03: Reordered to avoid g++ Wall warning
+    														peer_(peer_addr), socket_(socket==INVALID_SOCKET?default_socket():socket), // FIXME
+    														transfer_(transfer), own_id_mentioned_(false),
+    														data_in_(TINT_NEVER,bin_t::NONE), data_in_dbl_(bin_t::NONE),
+    														data_out_cap_(bin_t::ALL),hint_in_size_(0), hint_out_size_(0),
+    														// Gertjan fix 996e21e8abfc7d88db3f3f8158f2a2c4fc8a8d3f
+    														// "Changed PEX rate limiting to per channel limiting"
+    														pex_requested_(false),  // Ric: init var that wasn't initialiazed
+    														last_pex_request_time_(0), next_pex_request_time_(0),
+    														pex_request_outstanding_(false),
+    														useless_pex_count_(0),
+    														rtt_avg_(TINT_SEC), dev_avg_(0), dip_avg_(TINT_SEC),
+    														last_send_time_(0), last_recv_time_(0), last_data_out_time_(0), last_data_in_time_(0),
+    														last_loss_time_(0), next_send_time_(0), open_time_(NOW), cwnd_(1),
+    														cwnd_count1_(0), send_interval_(TINT_SEC),
+    														send_control_(PING_PONG_CONTROL), sent_since_recv_(0),
+    														lastrecvwaskeepalive_(false), lastsendwaskeepalive_(false), // Arno: nap bug fix
+    														live_have_no_hint_(false), // Arno: live speed opt
+    														ack_rcvd_recent_(0),
+    														ack_not_rcvd_recent_(0), owd_min_bin_(0), owd_min_bin_start_(NOW),
+    														owd_cur_bin_(0), dgrams_sent_(0), dgrams_rcvd_(0),
+    														raw_bytes_up_(0), raw_bytes_down_(0), bytes_up_(0), bytes_down_(0),
+    														scheduled4del_(false),
+    														direct_sending_(false),
+    														peer_is_source_(peerissource),
+    														hs_out_(NULL), hs_in_(NULL),
+    														rtt_hint_tintbin_()
 {
 	if (peer_==Address())
 		peer_ = tracker;
@@ -462,7 +462,7 @@ Address swift::BoundAddress(evutil_socket_t sock) {
 	return Channel::BoundAddress(sock);
 }
 
-int Channel::GetSocket(Address &saddr) {
+evutil_socket_t Channel::GetSocket(Address &saddr) {
 	if (saddr != Address()) {
 		for (int i = 0; i < Channel::sock_count; i++) {
 			evutil_socket_t s = Channel::sock_open[i].sock;
@@ -476,10 +476,33 @@ int Channel::GetSocket(Address &saddr) {
 	return -1;
 }
 
+evutil_socket_t Channel::GetSocket(std::string if_name, std::string device) {
+	for (int i = 0; i < Channel::sock_count; i++) {
+		evutil_socket_t s = Channel::sock_open[i].sock;
+		if (if_name.compare(Channel::socket_if_info_map[s].if_name) == 0 &&
+				device.compare(Channel::socket_if_info_map[s].device) == 0) {
+			return s;
+		}
+	}
+	return -1;
+}
+
 void Channel::SetOnSendToInfoCallback(void (*callback)(evutil_socket_t, int)) {
 	Channel::onSendToInfoCallback = callback;
 }
 
+void Channel::updateSocketIfInfo(evutil_socket_t sock, int err) {
+	if (Channel::socket_if_info_map[sock].err != err) {
+		if (Channel::socket_if_info_map[sock].err == 0)
+			Channel::socket_if_info_map[sock].errors_since = usec_time(); // Time of the first error
+		Channel::socket_if_info_map[sock].err = err; // Newest error state
+		if (Channel::onSendToInfoCallback) { // Make sure callback is available
+			Channel::onSendToInfoCallback(sock, err); // Callback
+		}
+		if (err == 0)
+			Channel::socket_if_info_map[sock].errors_since = 0; // Errors have been resolved, reset to 0
+	}
+}
 
 int Channel::SendTo (evutil_socket_t sock, const Address& addr, struct evbuffer *evb) {
 	int length = evbuffer_get_length(evb);
@@ -487,21 +510,13 @@ int Channel::SendTo (evutil_socket_t sock, const Address& addr, struct evbuffer 
 			(struct sockaddr*)&(addr.addr),addr.get_real_sockaddr_length());
 	// SCHAAP: 2012-06-16 - How about EAGAIN and EWOULDBLOCK? Do we just drop the packet then as well?
 	if (r<0) {
-		if (Channel::socket_if_info_map[sock].err != errno) {
-			Channel::socket_if_info_map[sock].err = errno;
-			if (Channel::onSendToInfoCallback)
-				Channel::onSendToInfoCallback(sock, errno); // evutil_socket_t sock, short event, void *args
-		}
+		updateSocketIfInfo(sock, errno);
 		print_error("can't send");
 		evbuffer_drain(evb, length); // Arno: behaviour is to pretend the packet got lost
 	}
 	else {
 		evbuffer_drain(evb,r);
-		if (Channel::socket_if_info_map[sock].err != 0) {
-			Channel::socket_if_info_map[sock].err = 0;
-			if (Channel::onSendToInfoCallback)
-				Channel::onSendToInfoCallback(sock, 0); // evutil_socket_t sock, short event, void *args
-		}
+		updateSocketIfInfo(sock, 0);
 	}
 	global_dgrams_up++;
 	global_raw_bytes_up+=length;
@@ -579,6 +594,16 @@ int Channel::EncodeID(int unscrambled) {
 
 evutil_socket_t Channel::GetSocket() {
 	return socket_;
+}
+
+channels_t Channel::GetChannelsBySocket(evutil_socket_t sock) {
+	channels_t cbs(1);
+	channels_t::iterator iter;
+	for (iter=channels.begin(); iter!=channels.end(); iter++) {
+		if ((*iter)->GetSocket() == sock)
+			cbs[(*iter)->id_] = *iter;
+	}
+	return cbs;
 }
 
 

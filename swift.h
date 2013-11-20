@@ -711,9 +711,11 @@ namespace swift {
         static int      SendTo(evutil_socket_t sock, const Address& addr, struct evbuffer *evb); // Called by Channel::Send()
         static evutil_socket_t Bind(Address address, sckrwecb_t callbacks=sckrwecb_t());
         static Address  BoundAddress(evutil_socket_t sock);
-        static int 		GetSocket(Address &saddr);
+        static evutil_socket_t GetSocket(Address &saddr);
+        static evutil_socket_t GetSocket(std::string if_name, std::string device);
         static evutil_socket_t default_socket()
             { return sock_count ? sock_open[0].sock : INVALID_SOCKET; }
+        static channels_t	GetChannelsBySocket(evutil_socket_t sock);
 
         /** close the port */
         static void     CloseSocket(evutil_socket_t sock);
@@ -722,14 +724,18 @@ namespace swift {
         static tint     Time();
         static tint 	last_tick;
 
+#define UNKNOWN_INTERFACE "UIF"
         // Socket if info
         struct socket_if_info {
-        	std::string name;
+        	std::string if_name;
         	int err;
-        	socket_if_info() {}
-        	socket_if_info(std::string name) : name(name), err() {}
+        	std::string device;
+        	tint errors_since;
+        	socket_if_info() : if_name(UNKNOWN_INTERFACE), err(0), device(UNKNOWN_INTERFACE), errors_since(0) {}
+        	socket_if_info(std::string name) : if_name(name), err(0), device(name), errors_since(0) {}
         };
         static std::map<evutil_socket_t, socket_if_info> socket_if_info_map;
+        static void updateSocketIfInfo(evutil_socket_t sock, int err);
 
         // Callback
         static void		(*onSendToInfoCallback)(evutil_socket_t, int);
@@ -1156,7 +1162,7 @@ namespace swift {
     void    LibraryInit(void);
 
     /** Start listening a port. Returns socket descriptor. */
-    int     Listen (Address addr);
+    int     Listen (Address addr, std::string if_name=UNKNOWN_INTERFACE, std::string device=UNKNOWN_INTERFACE);
     /** Stop listening to a port. */
     /** Get the address bound to the socket descriptor returned by Listen() */
     Address BoundAddress(evutil_socket_t sock);
@@ -1232,8 +1238,6 @@ namespace swift {
 
     /** Return the transfer descriptors of all loaded transfers (incl. LIVE). */
     tdlist_t GetTransferDescriptors();
-    /** Return the active swarms*/
-    std::vector<Sha1Hash> GetActiveSwarmsRoothashes();
     /** Set the maximum speed in bytes/s for the transfer */
     void    SetMaxSpeed( int td, data_direction_t ddir, double speed);
     /** Get the current speed in bytes/s for the transfer, if activated. */

@@ -1652,11 +1652,7 @@ void Channel::LibeventReceiveCallback(evutil_socket_t fd, short event, void *arg
 	Time();
 	dprintf("%s recv callback %s\n",tintstr(), Channel::BoundAddress(fd).str().c_str());
 
-	if (Channel::socket_if_info_map[fd].err != 0) {
-		Channel::socket_if_info_map[fd].err = 0;
-		if (Channel::onSendToInfoCallback)
-			Channel::onSendToInfoCallback(fd, 0); // evutil_socket_t sock, short event, void *args
-	}
+	updateSocketIfInfo(fd, 0);
 
 	RecvDatagram(fd);
 }
