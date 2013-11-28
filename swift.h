@@ -155,6 +155,19 @@ namespace swift {
     socklen_t get_real_sockaddr_length() const;
     };
 
+// Struct Interface, for both ipv4 and ipv6
+    struct Interface {
+    	std::string name;
+    	struct sockaddr ip;
+    	struct sockaddr netmask;
+    	struct sockaddr gateway;
+    	std::string device;
+    	Interface() {}
+    	Interface(sockaddr ip) : ip(ip) {}
+    	Interface(sockaddr ip, sockaddr gateway, std::string device) : ip(ip), gateway(gateway), device(device) {}
+    	Interface(std::string name, sockaddr ip, sockaddr netmask) : name(name), ip(ip), netmask(netmask) {}
+    };
+
 // Arno, 2011-10-03: Use libevent callback functions, no on_error?
 #define sockcb_t        event_callback_fn
     struct sckrwecb_t {
@@ -698,8 +711,10 @@ namespace swift {
         static std::vector<int> table_numbers;
         static void delete_rules_and_tables();
         static int get_routing_table_number(std::string name);
-        static int set_routing_table(std::string ifname, sockaddr_in sa, sockaddr_in netmask);
-        static std::string ipv4_to_if(sockaddr_in *find, std::map<std::string, short> pifs, sockaddr_in &netmask);
+        static int set_routing_table(sockaddr_in sa, Interface iface);
+        static Interface ipv4_to_if(sockaddr_in *find, std::map<std::string, short> pifs);
+
+#define UNKNOWN_INTERFACE "UIF"
 
         // SOCKMGMT
         // Arno: channel is also a "singleton" class that manages all sockets
@@ -709,10 +724,10 @@ namespace swift {
         static void     RecvDatagram (evutil_socket_t socket); // Called by LibeventReceiveCallback
         static int      RecvFrom(evutil_socket_t sock, Address& addr, struct evbuffer *evb); // Called by RecvDatagram
         static int      SendTo(evutil_socket_t sock, const Address& addr, struct evbuffer *evb); // Called by Channel::Send()
-        static evutil_socket_t Bind(Address address, sckrwecb_t callbacks=sckrwecb_t());
+        static evutil_socket_t Bind(Address address, sckrwecb_t callbacks=sckrwecb_t(), sockaddr gateway=sockaddr(), std::string device=UNKNOWN_INTERFACE);
         static Address  BoundAddress(evutil_socket_t sock);
         static evutil_socket_t GetSocket(Address &saddr);
-        static evutil_socket_t GetSocket(std::string if_name, std::string device);
+        static evutil_socket_t GetSocket(std::string device);
         static evutil_socket_t default_socket()
             { return sock_count ? sock_open[0].sock : INVALID_SOCKET; }
         static channels_t	GetChannelsBySocket(evutil_socket_t sock);
@@ -724,15 +739,14 @@ namespace swift {
         static tint     Time();
         static tint 	last_tick;
 
-#define UNKNOWN_INTERFACE "UIF"
         // Socket if info
         struct socket_if_info {
-        	std::string if_name;
+        	struct Address address;
+        	struct Interface interface;
         	int err;
-        	std::string device;
         	tint errors_since;
-        	socket_if_info() : if_name(UNKNOWN_INTERFACE), err(0), device(UNKNOWN_INTERFACE), errors_since(0) {}
-        	socket_if_info(std::string name) : if_name(name), err(0), device(name), errors_since(0) {}
+        	socket_if_info() {}
+        	socket_if_info(Address address, Interface interface) : address(address), interface(interface) {}
         };
         static std::map<evutil_socket_t, socket_if_info> socket_if_info_map;
         static void updateSocketIfInfo(evutil_socket_t sock, int err);
@@ -1162,7 +1176,7 @@ namespace swift {
     void    LibraryInit(void);
 
     /** Start listening a port. Returns socket descriptor. */
-    int     Listen (Address addr, std::string if_name=UNKNOWN_INTERFACE, std::string device=UNKNOWN_INTERFACE);
+    int     Listen (Address addr, sockaddr gateway=sockaddr(), std::string device=UNKNOWN_INTERFACE);
     /** Stop listening to a port. */
     /** Get the address bound to the socket descriptor returned by Listen() */
     Address BoundAddress(evutil_socket_t sock);

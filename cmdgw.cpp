@@ -246,11 +246,23 @@ void CmdGwGotPEERADDR(Sha1Hash &want_hash, Address &peer, Address &saddr)
 	swift::AddPeer(peer, fd, want_hash);
 }
 
-void CmdGwGotADDSOCKET(Address &saddr, std::string if_name, std::string device)
+void CmdGwGotADDSOCKET(Address &saddr, std::string gateway, std::string device)
 {
 	// Create a new socket
-	fprintf(stderr, "ADDSOCKET %s %s %s\n", saddr.str().c_str(), if_name.c_str(), device.c_str());
-	int fd = swift::Listen(saddr, if_name, device);
+	fprintf(stderr, "ADDSOCKET %s %s %s\n", saddr.str().c_str(), gateway.c_str(), device.c_str());
+	struct sockaddr *gw;
+	if (saddr.get_family() == AF_INET) {
+		struct sockaddr_in si;
+		si.sin_family = AF_INET;
+		inet_aton(gateway.c_str(), &si.sin_addr);
+		gw = (sockaddr *) &si;
+	} else { // AF_INET6
+		struct sockaddr_in6 si;
+		si.sin6_family = AF_INET6;
+		inet_pton(AF_INET6, gateway.c_str(), &si.sin6_addr);
+		gw = (sockaddr *) &si;
+	}
+	int fd = swift::Listen(saddr, *gw, device);
 }
 
 
@@ -1010,15 +1022,15 @@ int CmdGwHandleCommand(evutil_socket_t cmdsock, char *copyline)
 	}
 	else if (!strcmp(method,"ADDSOCKET"))
 	{
-		// ADDSOCKET ip:port if_name device_name\r\n
+		// ADDSOCKET ip:port gateway device_name\r\n
 		token = strtok_r(paramstr," ",&savetok); // address
 		if (token == NULL)
 			return ERROR_MISS_ARG;
 		char *addrstr = token;
 		token = strtok_r(NULL," ",&savetok); // interface name
-		std::string if_name = UNKNOWN_INTERFACE;
+		std::string gateway = "0.0.0.0";
 		if (token != NULL)
-			if_name.assign(token);
+			gateway.assign(token);
 		token = strtok_r(NULL," ",&savetok); // device name
 		std::string device_name = UNKNOWN_INTERFACE;
 		if (token != NULL)
@@ -1026,7 +1038,7 @@ int CmdGwHandleCommand(evutil_socket_t cmdsock, char *copyline)
 
 		Address saddr = Address(addrstr);
 		if (saddr != Address()) {
-			CmdGwGotADDSOCKET(saddr, if_name, device_name);
+			CmdGwGotADDSOCKET(saddr, gateway, device_name);
 		}
 	}
 	else

@@ -38,8 +38,18 @@ void StartLibraryCleanup()
  * Global Operations
  */
 
-int     swift::Listen(Address addr, std::string if_name, std::string device)
+int     swift::Listen(Address addr, sockaddr gateway, std::string device)
 {
+	/*
+	 * Listen policy:
+	 * In principal all addresses will be attempted. A failure to bind results in the program quitting.
+	 * All accepted addresses will be stored, as well as information on their interfaces.
+	 * In case a new address has the same ip address and port number as a consisting socket,
+	 * binding will only continue if there was an error with this socket. (The socket is then also removed)
+	 * In case a new address is accompanied by a device name, the latter is to other sockets.
+	 * If one such exists already and has an erred last time, it will be removed. A new socket on the same device is allowed.
+	 *
+	 */
 	evutil_socket_t sock_to_kill = -1;
 	evutil_socket_t sock  = Channel::GetSocket(addr);
 	if (sock != -1) {
@@ -53,7 +63,7 @@ int     swift::Listen(Address addr, std::string if_name, std::string device)
 			return -1; // There is no point in trying to add an already running socket
 	}
 
-	sock  = Channel::GetSocket(if_name, device);
+	sock  = Channel::GetSocket(device);
 	if (sock != -1) {
 		if (api_debug)
 			fprintf(stderr, "We have a socket for this device!\n", addr.ipstr(true).c_str());
@@ -83,7 +93,7 @@ int     swift::Listen(Address addr, std::string if_name, std::string device)
 
 	sckrwecb_t cb;
 	cb.may_read = &Channel::LibeventReceiveCallback;
-	cb.sock = Channel::Bind(addr,cb);
+	cb.sock = Channel::Bind(addr,cb, gateway, device);
 	// swift UDP receive
 	event_assign(evrecv, Channel::evbase, cb.sock, EV_READ|EV_PERSIST,
 			cb.may_read, NULL);

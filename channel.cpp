@@ -304,11 +304,11 @@ int Channel::get_routing_table_number(string name) {
 	}
 }
 
-int Channel::set_routing_table(string ifname, sockaddr_in sa, sockaddr_in netmask) {
+int Channel::set_routing_table(sockaddr_in sa, Interface iface) {
 	// Routing picture: http://billauer.co.il/non-html/ipmasq-html2x.gif
 	string ip = inet_ntoa(sa.sin_addr);
 	short port = ntohs(sa.sin_port);
-	int table_num = get_routing_table_number(string (ifname));
+	int table_num = get_routing_table_number(string (iface.name));
 
 	if (table_num > 0) {
 		std::ostringstream oss;
@@ -320,22 +320,23 @@ int Channel::set_routing_table(string ifname, sockaddr_in sa, sockaddr_in netmas
 		oss << "ip rule add from " << ip << " table " << table_num;
 		sys_call(oss.str().c_str());
 
+		sockaddr_in *netmask = (sockaddr_in *) &iface.netmask;
 		struct in_addr addr = sa.sin_addr;
-		addr.s_addr &= netmask.sin_addr.s_addr; // Set netmask zero bits to zero to get the base ip address
+		addr.s_addr &= netmask->sin_addr.s_addr; // Set netmask zero bits to zero to get the base ip address
 		// Get the number of bits set to 1
-		std::bitset<sizeof(netmask.sin_addr.s_addr) * CHAR_BIT> b(netmask.sin_addr.s_addr);
+		std::bitset<sizeof(netmask->sin_addr.s_addr) * CHAR_BIT> b(netmask->sin_addr.s_addr);
 
 		//		fprintf(stderr, "GATEWAY %s\n", inet_ntoa(addr));
 
 		// Is this one necessary? Probably in the case of point to point networks only.. So yeah.
 		oss.str("");
-		oss << "ip route add dev " << ifname.c_str() << " " << inet_ntoa(addr) << "/" << b.count() << " table " << table_num;
+		oss << "ip route add dev " << iface.name.c_str() << " " << inet_ntoa(addr) << "/" << b.count() << " table " << table_num;
 		sys_call(oss.str().c_str());
 
 		addr.s_addr |= 0x01000000; // Add one to the most significant byte to get the most likely address for the gateway
 
 		oss.str("");
-		oss << "ip route add dev " << ifname.c_str() << " default via " << inet_ntoa(addr) << " table " << table_num;
+		oss << "ip route add dev " << iface.name.c_str() << " default via " << inet_ntoa(addr) << " table " << table_num;
 		sys_call(oss.str().c_str());
 
 		table_numbers.push_back(table_num);
@@ -343,11 +344,11 @@ int Channel::set_routing_table(string ifname, sockaddr_in sa, sockaddr_in netmas
 	return table_num;
 }
 
-std::string Channel::ipv4_to_if(sockaddr_in *find, std::map<string, short> pifs, sockaddr_in &netmask) {
+Interface Channel::ipv4_to_if(sockaddr_in *find, std::map<string, short> pifs) {
 	struct ifaddrs *addrs, *iap;
-	struct sockaddr_in *sa, *temp_netmask;
+	struct sockaddr_in *sa, *temp_netmask, netmask;
 	struct in_addr si;
-	std::string buf;
+	std::string buf = UNKNOWN_INTERFACE;
 	short priority = 0;
 
 	getifaddrs(&addrs);
@@ -360,9 +361,8 @@ std::string Channel::ipv4_to_if(sockaddr_in *find, std::map<string, short> pifs,
 			in_addr_t cmp_subnet2 = sa->sin_addr.s_addr & temp_netmask->sin_addr.s_addr;
 			if (find && memcmp(&cmp_subnet1, &cmp_subnet2, sizeof(cmp_subnet1)) == 0) {
 				fprintf(stderr, "Found interface %s with ip %s\n", iap->ifa_name, inet_ntoa(sa->sin_addr));
-				netmask = *temp_netmask;
 				find->sin_addr = sa->sin_addr;
-				return iap->ifa_name;
+				return Interface(iap->ifa_name, *(sockaddr *) &find, *(sockaddr *) temp_netmask);
 			}
 			// For the case that no match is found
 			// Determine default interface using pifs priority
@@ -382,11 +382,11 @@ std::string Channel::ipv4_to_if(sockaddr_in *find, std::map<string, short> pifs,
 				buf.c_str(), inet_ntoa(find->sin_addr), find->sin_addr.s_addr);
 	}
 
-	return buf;
+	return Interface(buf, *(sockaddr *) &find, *(sockaddr *) &netmask);
 }
 
 // SOCKMGMT
-evutil_socket_t Channel::Bind (Address address, sckrwecb_t callbacks) {
+evutil_socket_t Channel::Bind (Address address, sckrwecb_t callbacks, sockaddr gateway, std::string device) {
 	struct sockaddr_storage sa = address;
 	evutil_socket_t fd;
 	// Arno, 2013-06-05: MacOS X bind fails if sizeof(struct sockaddr_storage) is passed.
@@ -403,22 +403,21 @@ evutil_socket_t Channel::Bind (Address address, sckrwecb_t callbacks) {
 	dbnd_ensure ( setsockopt(fd, SOL_SOCKET, SO_RCVBUF,
 			(setsockoptptr_t)&rcvbuf, sizeof(int)) == 0 );
 
-	std::string devname = "";
+	Interface iface;
 	struct sockaddr_in *si = (struct sockaddr_in *) &sa;
 	if (si->sin_addr.s_addr != 0) { // If it is the wildcard, don't do anything about it.
 		std::map<string, short> pifs;
 		pifs["wlan0"] = 1;
 		pifs["eth0"] = 2;
-		sockaddr_in netmask;
-		devname = ipv4_to_if(si, pifs, netmask);
-		if (devname.empty()) {
+		iface = ipv4_to_if(si, pifs);
+		if (iface.name != UNKNOWN_INTERFACE) {
 			fprintf(stderr, "No interface has been found\n");
 			return -1;
 		}
+		iface.gateway = gateway;
+		set_routing_table(*si, iface);
 
-		set_routing_table(string (devname), *si, netmask);
-
-		if ( setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, devname.c_str(), devname.size()) < 0) {
+		if ( setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, iface.name.c_str(), iface.name.size()) < 0) {
 			if (errno == 1) {
 				perror("I recommend getting permission to set SO_BINDTODEVICE");
 			} else {
@@ -438,8 +437,10 @@ evutil_socket_t Channel::Bind (Address address, sckrwecb_t callbacks) {
 
 	callbacks.sock = fd;
 	sock_open[sock_count++] = callbacks;
-	if (devname != "")
-		Channel::socket_if_info_map[fd] = Channel::socket_if_info(devname);
+	if (iface.name != UNKNOWN_INTERFACE) {
+		iface.device = device;
+		Channel::socket_if_info_map[fd] = Channel::socket_if_info(address, iface);
+	}
 	return fd;
 }
 
@@ -476,11 +477,10 @@ evutil_socket_t Channel::GetSocket(Address &saddr) {
 	return -1;
 }
 
-evutil_socket_t Channel::GetSocket(std::string if_name, std::string device) {
+evutil_socket_t Channel::GetSocket(std::string device) {
 	for (int i = 0; i < Channel::sock_count; i++) {
 		evutil_socket_t s = Channel::sock_open[i].sock;
-		if (if_name.compare(Channel::socket_if_info_map[s].if_name) == 0 &&
-				device.compare(Channel::socket_if_info_map[s].device) == 0) {
+		if (device.compare(Channel::socket_if_info_map[s].interface.device) == 0) {
 			return s;
 		}
 	}
