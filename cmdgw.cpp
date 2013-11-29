@@ -1107,11 +1107,8 @@ void CmdGwListenErrorCallback(struct evconnlistener *listener, void *ctx)
 	evconnlistener_free(cmd_evlistener);
 }
 
-void onSendToInfoCallback(evutil_socket_t sock, int err) {
-	Address sock_addr = swift::BoundAddress(sock);
-	if (sock_addr != Address()) {
-		CmdGwSendSOCKETINFOBySocket(cmd_tunnel_sock, sock_addr, err);
-	}
+void onSendToInfoCallback(Address sock_addr, int err) {
+	CmdGwSendSOCKETINFOBySocket(cmd_tunnel_sock, sock_addr, err);
 }
 
 bool InstallCmdGateway (struct event_base *evbase,Address cmdaddr,Address httpaddr)

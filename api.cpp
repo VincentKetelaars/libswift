@@ -46,15 +46,15 @@ int     swift::Listen(Address addr, sockaddr gateway, std::string device)
 	 * All accepted addresses will be stored, as well as information on their interfaces.
 	 * In case a new address has the same ip address and port number as a consisting socket,
 	 * binding will only continue if there was an error with this socket. (The socket is then also removed)
-	 * In case a new address is accompanied by a device name, the latter is to other sockets.
+	 * In case a new address is accompanied by a device name, the latter is compared to other sockets.
 	 * If one such exists already and has an erred last time, it will be removed. A new socket on the same device is allowed.
-	 *
+	 * The same thing applies to an incoming ip address with different port number.
 	 */
 	evutil_socket_t sock_to_kill = -1;
 	evutil_socket_t sock  = Channel::GetSocket(addr);
 	if (sock != -1) {
 		if (api_debug)
-			fprintf(stderr, "Socket %s is already running!\n", addr.ipstr(true).c_str());
+			fprintf(stderr, "Socket %s is already running!\n", addr.str().c_str());
 		// TODO: Perhaps allow for sockets to hang on a little longer if they have only been gone for a few seconds
 		// TODO: Check for interface
 		if (Channel::socket_if_info_map[sock].err != 0)
@@ -63,10 +63,11 @@ int     swift::Listen(Address addr, sockaddr gateway, std::string device)
 			return -1; // There is no point in trying to add an already running socket
 	}
 
-	sock  = Channel::GetSocket(device);
+	sock  = Channel::GetSimilarSocket(device, addr); // Socket with same device and/or ip
 	if (sock != -1) {
 		if (api_debug)
-			fprintf(stderr, "We have a socket for this device!\n", addr.ipstr(true).c_str());
+			fprintf(stderr, "We have a socket %s for this device with error %d!\n",
+					Channel::socket_if_info_map[sock].address.str().c_str(), Channel::socket_if_info_map[sock].err);
 		if (Channel::socket_if_info_map[sock].err != 0)
 			sock_to_kill = sock;
 		// If someone wants to create a second socket on the same interface, let him
@@ -74,7 +75,8 @@ int     swift::Listen(Address addr, sockaddr gateway, std::string device)
 
 	if (sock_to_kill != -1) {
 		if (api_debug)
-			fprintf(stderr, "This socket has problems, so we will replace it!\n");
+			fprintf(stderr, "This socket %s has problems, so we will replace it!\n",
+					Channel::socket_if_info_map[sock_to_kill].address.str().c_str());
 		Channel::CloseSocket(sock_to_kill);
 		channels_t cbs = Channel::GetChannelsBySocket(sock_to_kill);
 		channels_t::iterator iter;
@@ -84,8 +86,6 @@ int     swift::Listen(Address addr, sockaddr gateway, std::string device)
 	}
 
 	struct event *evrecv = new struct event;
-	if (api_debug)
-		fprintf(stderr,"swift::Listen addr %s\n", addr.str().c_str() );
 
 	// Only do StartLibraryCleanup once, otherwise the same event is added to base again
 	if (Channel::sock_count == 0)
@@ -94,6 +94,10 @@ int     swift::Listen(Address addr, sockaddr gateway, std::string device)
 	sckrwecb_t cb;
 	cb.may_read = &Channel::LibeventReceiveCallback;
 	cb.sock = Channel::Bind(addr,cb, gateway, device);
+	if (cb.sock != INVALID_SOCKET) {
+		fprintf(stderr,"swift::Listen addr %s\n", addr.str().c_str() );
+		Channel::updateSocketIfInfo(cb.sock, 0);
+	}
 	// swift UDP receive
 	event_assign(evrecv, Channel::evbase, cb.sock, EV_READ|EV_PERSIST,
 			cb.may_read, NULL);

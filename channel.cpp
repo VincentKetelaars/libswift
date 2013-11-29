@@ -44,7 +44,7 @@ Address Channel::tracker;
 FILE* Channel::debug_file = stderr;
 tint Channel::MIN_PEX_REQUEST_INTERVAL = TINT_SEC;
 std::vector<int> Channel::table_numbers;
-void (*Channel::onSendToInfoCallback)(evutil_socket_t, int);
+void (*Channel::onSendToInfoCallback)(Address, int);
 std::map<evutil_socket_t, Channel::socket_if_info> Channel::socket_if_info_map;
 
 /*
@@ -333,10 +333,16 @@ int Channel::set_routing_table(sockaddr_in sa, Interface iface) {
 		oss << "ip route add dev " << iface.name.c_str() << " " << inet_ntoa(addr) << "/" << b.count() << " table " << table_num;
 		sys_call(oss.str().c_str());
 
-		addr.s_addr |= 0x01000000; // Add one to the most significant byte to get the most likely address for the gateway
+		sockaddr_in *gateway = (sockaddr_in *) &iface.gateway;
+		if (gateway->sin_addr.s_addr == 0) {
+			// No gateway supplied.. (i.e. gateway == 0.0.0.0)
+			// Add one to the most significant byte to get the most likely address for the gateway
+			addr.s_addr |= 0x01000000;
+			gateway->sin_addr = addr;
+		}
 
 		oss.str("");
-		oss << "ip route add dev " << iface.name.c_str() << " default via " << inet_ntoa(addr) << " table " << table_num;
+		oss << "ip route add dev " << iface.name.c_str() << " default via " << inet_ntoa(gateway->sin_addr) << " table " << table_num;
 		sys_call(oss.str().c_str());
 
 		table_numbers.push_back(table_num);
@@ -392,7 +398,8 @@ evutil_socket_t Channel::Bind (Address address, sckrwecb_t callbacks, sockaddr g
 	// Arno, 2013-06-05: MacOS X bind fails if sizeof(struct sockaddr_storage) is passed.
 	int len = address.get_real_sockaddr_length(), sndbuf=1<<20, rcvbuf=1<<20;
 #define dbnd_ensure(x) { if (!(x)) { \
-		print_error("binding fails"); close_socket(fd); return INVALID_SOCKET; } }
+		print_error("binding fails"); Channel::updateSocketIfInfo(fd, errno); close_socket(fd); return INVALID_SOCKET; } }
+	// TODO: Will not be able to get socket address in case error comes before binding
 	dbnd_ensure ( (fd = socket(address.get_family(), SOCK_DGRAM, 0)) >= 0 );
 	// IPV6_PKTINFO and IP_PKTINFO allow to see the interface on receive
 	// This needs to be set right after creation
@@ -410,7 +417,7 @@ evutil_socket_t Channel::Bind (Address address, sckrwecb_t callbacks, sockaddr g
 		pifs["wlan0"] = 1;
 		pifs["eth0"] = 2;
 		iface = ipv4_to_if(si, pifs);
-		if (iface.name != UNKNOWN_INTERFACE) {
+		if (iface.name == UNKNOWN_INTERFACE) {
 			fprintf(stderr, "No interface has been found\n");
 			return -1;
 		}
@@ -477,17 +484,20 @@ evutil_socket_t Channel::GetSocket(Address &saddr) {
 	return -1;
 }
 
-evutil_socket_t Channel::GetSocket(std::string device) {
+evutil_socket_t Channel::GetSimilarSocket(std::string device, Address address) {
+	// Get socket with equal device name or ip address
+	// TODO: Base comparison on string might not be always correct
 	for (int i = 0; i < Channel::sock_count; i++) {
 		evutil_socket_t s = Channel::sock_open[i].sock;
-		if (device.compare(Channel::socket_if_info_map[s].interface.device) == 0) {
+		if (device.compare(Channel::socket_if_info_map[s].interface.device) == 0 ||
+				address.ipstr(false).compare(Channel::socket_if_info_map[s].address.ipstr(false)) == 0) {
 			return s;
 		}
 	}
 	return -1;
 }
 
-void Channel::SetOnSendToInfoCallback(void (*callback)(evutil_socket_t, int)) {
+void Channel::SetOnSendToInfoCallback(void (*callback)(Address, int)) {
 	Channel::onSendToInfoCallback = callback;
 }
 
@@ -497,7 +507,7 @@ void Channel::updateSocketIfInfo(evutil_socket_t sock, int err) {
 			Channel::socket_if_info_map[sock].errors_since = usec_time(); // Time of the first error
 		Channel::socket_if_info_map[sock].err = err; // Newest error state
 		if (Channel::onSendToInfoCallback) { // Make sure callback is available
-			Channel::onSendToInfoCallback(sock, err); // Callback
+			Channel::onSendToInfoCallback(Channel::socket_if_info_map[sock].address, err); // Callback
 		}
 		if (err == 0)
 			Channel::socket_if_info_map[sock].errors_since = 0; // Errors have been resolved, reset to 0

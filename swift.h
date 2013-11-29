@@ -155,6 +155,8 @@ namespace swift {
     socklen_t get_real_sockaddr_length() const;
     };
 
+#define UNKNOWN_INTERFACE "UIF"
+
 // Struct Interface, for both ipv4 and ipv6
     struct Interface {
     	std::string name;
@@ -162,9 +164,9 @@ namespace swift {
     	struct sockaddr netmask;
     	struct sockaddr gateway;
     	std::string device;
-    	Interface() {}
-    	Interface(sockaddr ip) : ip(ip) {}
-    	Interface(sockaddr ip, sockaddr gateway, std::string device) : ip(ip), gateway(gateway), device(device) {}
+    	Interface() : name(UNKNOWN_INTERFACE) {}
+    	Interface(sockaddr ip) : name(UNKNOWN_INTERFACE), ip(ip) {}
+    	Interface(sockaddr ip, sockaddr gateway, std::string device) : name(UNKNOWN_INTERFACE), ip(ip), gateway(gateway), device(device) {}
     	Interface(std::string name, sockaddr ip, sockaddr netmask) : name(name), ip(ip), netmask(netmask) {}
     };
 
@@ -714,8 +716,6 @@ namespace swift {
         static int set_routing_table(sockaddr_in sa, Interface iface);
         static Interface ipv4_to_if(sockaddr_in *find, std::map<std::string, short> pifs);
 
-#define UNKNOWN_INTERFACE "UIF"
-
         // SOCKMGMT
         // Arno: channel is also a "singleton" class that manages all sockets
         // for a swift process
@@ -727,7 +727,7 @@ namespace swift {
         static evutil_socket_t Bind(Address address, sckrwecb_t callbacks=sckrwecb_t(), sockaddr gateway=sockaddr(), std::string device=UNKNOWN_INTERFACE);
         static Address  BoundAddress(evutil_socket_t sock);
         static evutil_socket_t GetSocket(Address &saddr);
-        static evutil_socket_t GetSocket(std::string device);
+        static evutil_socket_t GetSimilarSocket(std::string device, Address address);
         static evutil_socket_t default_socket()
             { return sock_count ? sock_open[0].sock : INVALID_SOCKET; }
         static channels_t	GetChannelsBySocket(evutil_socket_t sock);
@@ -745,15 +745,16 @@ namespace swift {
         	struct Interface interface;
         	int err;
         	tint errors_since;
-        	socket_if_info() {}
-        	socket_if_info(Address address, Interface interface) : address(address), interface(interface) {}
+        	socket_if_info() : address(), interface(), err(0), errors_since(0) {}
+        	socket_if_info(Address address, Interface interface) : address(address), interface(interface), err(0),
+        			errors_since(0) {}
         };
         static std::map<evutil_socket_t, socket_if_info> socket_if_info_map;
         static void updateSocketIfInfo(evutil_socket_t sock, int err);
 
         // Callback
-        static void		(*onSendToInfoCallback)(evutil_socket_t, int);
-        static void		SetOnSendToInfoCallback(void (*callback)(evutil_socket_t, int));
+        static void		(*onSendToInfoCallback)(Address, int);
+        static void		SetOnSendToInfoCallback(void (*callback)(Address, int));
 
         // Ric: used for testing LEDBAT's behaviour
         float		GetCwnd() { return cwnd_; }
