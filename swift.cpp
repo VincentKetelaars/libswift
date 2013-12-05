@@ -382,7 +382,7 @@ int utf8main (int argc, char** argv)
 		}
 	}
 
-	if (!seeding && (tracker!=Address() || httpgw_enabled || cmdgw_enabled)) { // leeching
+	if (!seeding && (tracker!=Address() || httpgw_enabled)) { // leeching
 		evutil_socket_t sock = INVALID_SOCKET;
 		for (int i=0; i<=10; i++) {
 			bindaddr = Address((uint32_t)INADDR_ANY,0);
@@ -394,6 +394,8 @@ int utf8main (int argc, char** argv)
 		}
 		if (!quiet)
 			fprintf(stderr,"swift: My listen port is %d\n", BoundAddress(sock).port() );
+	} else if(!seeding && cmdgw_enabled) {
+		fprintf(stderr, "Rely on command gateway to add sockets!\n");
 	}
 
 	if (tracker!=Address() && !printurl)

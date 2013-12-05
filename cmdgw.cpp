@@ -1007,7 +1007,10 @@ int CmdGwHandleCommand(evutil_socket_t cmdsock, char *copyline)
 		if (token == NULL)
 			return ERROR_MISS_ARG;
 		char *paddrstr = token;
-		Address peer(paddrstr);
+		// If peeraddr == -1, then no peer address
+		Address peer = Address();
+		if (paddrstr != "-1")
+			peer = Address(paddrstr);
 		Sha1Hash swarm_id = Sha1Hash(true,hashstr);
 
 		token = strtok_r(NULL," ",&savetok);      // bool
@@ -1018,6 +1021,8 @@ int CmdGwHandleCommand(evutil_socket_t cmdsock, char *copyline)
 			char *saddrstr = token;
 			saddr = Address(saddrstr);
 		}
+		if (peer == Address() && saddr == Address()) // You have to have one of these
+			return ERROR_MISS_ARG;
 		CmdGwGotPEERADDR(swarm_id,peer,saddr);
 	}
 	else if (!strcmp(method,"ADDSOCKET"))

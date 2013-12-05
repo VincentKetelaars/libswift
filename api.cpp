@@ -94,13 +94,16 @@ int     swift::Listen(Address addr, sockaddr gateway, std::string device)
 	sckrwecb_t cb;
 	cb.may_read = &Channel::LibeventReceiveCallback;
 	cb.sock = Channel::Bind(addr,cb, gateway, device);
-	if (cb.sock != INVALID_SOCKET && addr.get_family() == AF_INET) {
-		struct sockaddr_in sin;
-		socklen_t len = sizeof(sin);
-		if (getsockname(cb.sock, (struct sockaddr *)&sin, &len) == -1)
-			perror("getsockname");
-		addr.set_port(sin.sin_port);
-		// TODO: Check / Edit address in if_info
+	if (cb.sock != INVALID_SOCKET && addr.port() == 0) {
+		if (addr.get_family() == AF_INET) {
+			struct sockaddr_in sin;
+			socklen_t len = sizeof(sin);
+			if (getsockname(cb.sock, (struct sockaddr *)&sin, &len) == -1)
+				perror("getsockname");
+			addr.set_port(sin.sin_port);
+			Channel::socket_if_info_map[cb.sock].address.set_port(sin.sin_port);
+		}
+		// TODO: get port number for IPv6 also.
 	}
 	if (cb.sock != INVALID_SOCKET) {
 		fprintf(stderr,"swift::Listen addr %s\n", addr.str().c_str() );
