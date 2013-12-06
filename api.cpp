@@ -77,12 +77,13 @@ int     swift::Listen(Address addr, sockaddr gateway, std::string device)
 		if (api_debug)
 			fprintf(stderr, "This socket %s has problems, so we will replace it!\n",
 					Channel::socket_if_info_map[sock_to_kill].address.str().c_str());
-		Channel::CloseSocket(sock_to_kill);
 		channels_t cbs = Channel::GetChannelsBySocket(sock_to_kill);
 		channels_t::iterator iter;
 		for (iter=cbs.begin(); iter!=cbs.end(); iter++) {
-			(*iter)->Schedule4Delete();
+			if ((*iter) != NULL)
+				(*iter)->Schedule4Delete();
 		}
+		Channel::CloseSocket(sock_to_kill);
 	}
 
 	struct event *evrecv = new struct event;
@@ -94,20 +95,21 @@ int     swift::Listen(Address addr, sockaddr gateway, std::string device)
 	sckrwecb_t cb;
 	cb.may_read = &Channel::LibeventReceiveCallback;
 	cb.sock = Channel::Bind(addr,cb, gateway, device);
+	// There might be a totally different IP address in use than suggested by addr
 	if (cb.sock != INVALID_SOCKET && addr.port() == 0) {
 		if (addr.get_family() == AF_INET) {
 			struct sockaddr_in sin;
 			socklen_t len = sizeof(sin);
 			if (getsockname(cb.sock, (struct sockaddr *)&sin, &len) == -1)
 				perror("getsockname");
-			addr.set_port(sin.sin_port);
-			Channel::socket_if_info_map[cb.sock].address.set_port(sin.sin_port);
+			Channel::socket_if_info_map[cb.sock].address.set_port(sin.sin_port); // Update the port number
 		}
 		// TODO: get port number for IPv6 also.
 	}
 	if (cb.sock != INVALID_SOCKET) {
-		fprintf(stderr,"swift::Listen addr %s\n", addr.str().c_str() );
-		Channel::updateSocketIfInfo(cb.sock, 0);
+		// This print will be read by Dispersy to ensure that we have a new working socket
+		fprintf(stderr,"swift::Listen addr %s\n", Channel::socket_if_info_map[cb.sock].address.str().c_str() );
+		Channel::updateSocketIfInfo(cb.sock, 0); // In addition we do a callback if available
 	}
 	// swift UDP receive
 	event_assign(evrecv, Channel::evbase, cb.sock, EV_READ|EV_PERSIST,
