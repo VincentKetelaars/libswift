@@ -102,7 +102,7 @@ int     swift::Listen(Address addr, sockaddr gateway, std::string device)
 			socklen_t len = sizeof(sin);
 			if (getsockname(cb.sock, (struct sockaddr *)&sin, &len) == -1)
 				perror("getsockname");
-			Channel::socket_if_info_map[cb.sock].address.set_port(sin.sin_port); // Update the port number
+			Channel::socket_if_info_map[cb.sock].address.set_port(ntohs(sin.sin_port)); // Update the port number
 		}
 		// TODO: get port number for IPv6 also.
 	}

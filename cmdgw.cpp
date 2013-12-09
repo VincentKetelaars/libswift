@@ -417,10 +417,10 @@ void CmdGwSendERRORBySocket(evutil_socket_t cmdsock, std::string msg, const Sha1
 }
 
 
-void CmdGwSendSOCKETINFOBySocket(evutil_socket_t cmdsock, Address sock_addr, int err)
+void CmdGwSendSOCKETINFOBySocket(evutil_socket_t cmdsock, Address sock_addr, int state)
 {
 	std::ostringstream oss;
-	oss << "SOCKETINFO " << sock_addr.ipstr(true) << " " << err << "\r\n";
+	oss << "SOCKETINFO " << sock_addr.ipstr(true) << " " << state << "\r\n";
 
 	if (cmd_gw_debug)
 		fprintf(stderr,"cmd: SendSOCKETINFO: %s\n", oss.str().c_str() );
@@ -1112,8 +1112,8 @@ void CmdGwListenErrorCallback(struct evconnlistener *listener, void *ctx)
 	evconnlistener_free(cmd_evlistener);
 }
 
-void onSendToInfoCallback(Address sock_addr, int err) {
-	CmdGwSendSOCKETINFOBySocket(cmd_tunnel_sock, sock_addr, err);
+void onSendToInfoCallback(Address sock_addr, int state) {
+	CmdGwSendSOCKETINFOBySocket(cmd_tunnel_sock, sock_addr, state);
 }
 
 bool InstallCmdGateway (struct event_base *evbase,Address cmdaddr,Address httpaddr)
