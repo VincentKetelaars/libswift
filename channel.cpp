@@ -337,13 +337,16 @@ int Channel::set_routing_table(sockaddr_in sa, Interface iface) {
 		if (gateway->sin_addr.s_addr == 0) {
 			// No gateway supplied.. (i.e. gateway == 0.0.0.0)
 			// Add one to the most significant byte to get the most likely address for the gateway
-			addr.s_addr |= 0x01000000;
-			gateway->sin_addr = addr;
+			// This most likely address might screw things up, so we take our chances without it!
+//			addr.s_addr |= 0x01000000; //
+//			gateway->sin_addr = addr;
 		}
 
-		oss.str("");
-		oss << "ip route add dev " << iface.name.c_str() << " default via " << inet_ntoa(gateway->sin_addr) << " table " << table_num;
-		sys_call(oss.str().c_str());
+		if (gateway->sin_addr.s_addr != 0) {
+			oss.str("");
+			oss << "ip route add dev " << iface.name.c_str() << " default via " << inet_ntoa(gateway->sin_addr) << " table " << table_num;
+			sys_call(oss.str().c_str());
+		}
 
 		table_numbers.push_back(table_num);
 	}
