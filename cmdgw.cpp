@@ -341,7 +341,7 @@ void CmdGwSendINFO(cmd_gw_t* req, int dlstatus)
 				if (iter!=peerchans->begin())
 					oss << ", ";
 				oss << "{";
-				Address sock_addr = swift::BoundAddress(c->GetSocket());
+				Address sock_addr = swift::BoundAddress(c->mysocket());
 				if (sock_addr != Address()) {
 					oss << "\"socket_ip\": \"" << sock_addr.ipstr() << "\", ";
 					oss << "\"socket_port\": \"" << sock_addr.port() << "\", ";
@@ -1007,10 +1007,7 @@ int CmdGwHandleCommand(evutil_socket_t cmdsock, char *copyline)
 		if (token == NULL)
 			return ERROR_MISS_ARG;
 		char *paddrstr = token;
-		// If peeraddr == -1, then no peer address
-		Address peer = Address();
-		if (paddrstr != "-1")
-			peer = Address(paddrstr);
+		Address peer = Address(paddrstr);
 		Sha1Hash swarm_id = Sha1Hash(true,hashstr);
 
 		token = strtok_r(NULL," ",&savetok);      // bool

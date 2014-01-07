@@ -605,16 +605,12 @@ int Channel::EncodeID(int unscrambled) {
 	return unscrambled ^ (int)start;
 }
 
-evutil_socket_t Channel::GetSocket() {
-	return socket_;
-}
-
 channels_t Channel::GetChannelsBySocket(evutil_socket_t sock) {
 	channels_t cbs(1);
 	channels_t::iterator iter;
 	for (iter=channels.begin(); iter!=channels.end(); iter++) {
 		if ((*iter) != NULL) {
-			if ((*iter)->GetSocket() == sock) {
+			if ((*iter)->mysocket() == sock) {
 				cbs.push_back(*iter);
 			}
 		}

@@ -36,7 +36,7 @@ ContentTransfer::ContentTransfer(transfer_t ttype) :  ttype_(ttype), mychannels_
 		speedupcount_(0), speeddwcount_(0), tracker_(),
 		tracker_retry_interval_(TRACKER_RETRY_INTERVAL_START),
 		tracker_retry_time_(NOW),
-		slow_start_hints_(0), peers()
+		slow_start_hints_(0)
 {
 	cur_speed_[DDIR_UPLOAD] = MovingAverageSpeed();
 	cur_speed_[DDIR_DOWNLOAD] = MovingAverageSpeed();
@@ -306,28 +306,22 @@ uint32_t   ContentTransfer::GetNumSeeders()
 
 void ContentTransfer::AddPeer(Address &peer, int fd)
 {
-	// Only add peers ones
-	if (peer != Address()) {
-		if(std::find(peers.begin(), peers.end(), peer) != peers.end()) {
-			return;
-		}
-		peers.push_back(peer);
-		if (fd < 0) {
-
-			for (int i = 0; i < Channel::sock_count; i++) {
-				Channel *c = new Channel(this,Channel::sock_open[i].sock,peer);
-			}
-		} else {
+	if (peer != Address() && fd > 0) { // Specific peer and socket if it doesn't exist
+		if (FindChannel(fd, peer, NULL) == NULL)
 			Channel *c = new Channel(this,fd,peer);
+		else
+			fprintf(stderr, "Already have channel with peer %s and socket %s", peer.str().c_str(),
+					Channel::BoundAddress(fd).str().c_str());
+	} else if (peer != Address() && fd < 0) { // Create channel for this peer with all sockets (not yet already done)
+		for (int i = 0; i < Channel::sock_count; i++) {
+			if (FindChannel(Channel::sock_open[i].sock, peer, NULL) == NULL)
+				Channel *c = new Channel(this,Channel::sock_open[i].sock,peer);
+			else
+				fprintf(stderr, "Already have channel with peer %s and socket %s", peer.str().c_str(),
+						Channel::BoundAddress(Channel::sock_open[i].sock).str().c_str());
 		}
-	} else {
-		if (fd > 0) {
-			// Create a channel for this socket for each peer
-			std::vector<Address>::iterator iter;
-			for (iter=peers.begin(); iter!=peers.end(); iter++) {
-				Channel *c = new Channel(this,fd,*iter);
-			}
-		}
+	} else { // Peer is not valid
+		fprintf(stderr, "Cannot create channel for peer %s and socket %s", peer.str().c_str(), Channel::BoundAddress(fd).str().c_str());
 	}
 }
 
@@ -339,7 +333,7 @@ Channel * ContentTransfer::FindChannel(evutil_socket_t sock, const Address &addr
 	{
 		Channel *c = *iter;
 		if (c != NULL) {
-			if (c != notc && c->GetSocket() == sock && (c->peer() == addr || c->recv_peer() == addr)) {
+			if (c != notc && c->mysocket() == sock && (c->peer() == addr || c->recv_peer() == addr)) {
 				return c;
 			}
 		}

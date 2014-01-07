@@ -301,7 +301,7 @@ void    Channel::Send () {
 			tintstr(),id_,(int)evbuffer_get_length(evb),peer().str().c_str(),
 			pcid);
 
-	int r = SendTo(GetSocket(),peer(),evb);
+	int r = SendTo(mysocket(),peer(),evb);
 	if (r==-1)
 		print_error("swift can't send datagram");
 	else
@@ -538,7 +538,7 @@ bin_t        Channel::AddData (struct evbuffer *evb) {
 		dprintf("%s #%u fsent %ib %s:%x\n",
 				tintstr(),id_,(int)evbuffer_get_length(evb),peer().str().c_str(),
 				hs_in_->peer_channel_id_);
-		int ret = Channel::SendTo(GetSocket(),peer(),evb); // kind of fragmentation
+		int ret = Channel::SendTo(mysocket(),peer(),evb); // kind of fragmentation
 		if (ret > 0)
 			raw_bytes_up_ += ret;
 		evbuffer_add_32be(evb, hs_in_->peer_channel_id_);

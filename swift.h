@@ -513,9 +513,6 @@ namespace swift {
 
         // Ric: slow start 4 requesting hints
         uint32_t        slow_start_hints_;
-
-        // Peers for this transfer
-        std::vector<Address> peers;
     };
 
 
@@ -823,6 +820,7 @@ namespace swift {
         bool        is_established () { return (hs_in_ == NULL) ? false  : hs_in_->peer_channel_id_ && own_id_mentioned_; }
         HashTree *  hashtree();
         ContentTransfer *transfer() { return transfer_; }
+        const evutil_socket_t mysocket() { return socket_; }
         const Address& peer() const { return peer_; }
         const Address& recv_peer() const { return recv_peer_; }
         tint 	    ack_timeout () {
@@ -865,7 +863,6 @@ namespace swift {
         void        LiveSend();
 
         void 	    CloseOnError();
-        evutil_socket_t GetSocket();
 
       protected:
         struct event    *evsend_ptr_; // Arno: timer per channel // SAFECLOSE
