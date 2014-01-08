@@ -129,6 +129,9 @@ void CmdGwCloseConnection(evutil_socket_t sock)
 			cmd_gw_t* req = &cmd_requests[i];
 			if (req->cmdsock==sock)
 			{
+				// Create checkpoint for each running download!
+				dprintf("%s @%i creating checkpoint for transfer %i\n",tintstr(),req->id,req->td);
+				swift::Checkpoint(req->td);
 				dprintf("%s @%i stopping-on-close transfer %i\n",tintstr(),req->id,req->td);
 				swift::Close(req->td);
 
