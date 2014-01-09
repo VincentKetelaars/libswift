@@ -36,7 +36,7 @@ ContentTransfer::ContentTransfer(transfer_t ttype) :  ttype_(ttype), mychannels_
 		speedupcount_(0), speeddwcount_(0), tracker_(),
 		tracker_retry_interval_(TRACKER_RETRY_INTERVAL_START),
 		tracker_retry_time_(NOW),
-		slow_start_hints_(0)
+		slow_start_hints_(0), pex_on(0)
 {
 	cur_speed_[DDIR_UPLOAD] = MovingAverageSpeed();
 	cur_speed_[DDIR_DOWNLOAD] = MovingAverageSpeed();

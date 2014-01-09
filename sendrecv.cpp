@@ -278,11 +278,13 @@ void    Channel::Send () {
 				/* Gertjan fix: 7aeea65f3efbb9013f601b22a57ee4a423f1a94d
                 "Only call Reschedule for 'reverse PEX' if the channel is in keep-alive mode"
 				 */
-				AddPexReq(evb);
+				if (transfer()->IsPexOn())
+					AddPexReq(evb);
 				if (ENABLE_CANCEL)
 					AddCancel(evb);
 			}
-			AddPex(evb);
+			if (transfer()->IsPexOn())
+				AddPex(evb);
 			TimeoutDataOut();
 			data = AddData(evb);
 		} else  {
@@ -770,24 +772,32 @@ void    Channel::Recv (struct evbuffer *evb) {
 		OnCancel(evb);
 		break;
 		case SWIFT_PEX_RESv4:
+			if (transfer()->IsPexOn())
+				break;
 			if (transfer()->ttype() == FILE_TRANSFER && ((FileTransfer *)transfer())->IsZeroState())
 				OnPexAddZeroState(evb,AF_INET);
 			else
 				OnPexAdd(evb,AF_INET);
 			break;
 		case SWIFT_PEX_RESv6: // PPSP
+			if (transfer()->IsPexOn())
+				break;
 		if (transfer()->ttype() == FILE_TRANSFER && ((FileTransfer *)transfer())->IsZeroState())
 			OnPexAddZeroState(evb,AF_INET6);
 		else
 			OnPexAdd(evb,AF_INET6);
 		break;
 		case SWIFT_PEX_REScert: // PPSP
+			if (transfer()->IsPexOn())
+				break;
 			if (transfer()->ttype() == FILE_TRANSFER && ((FileTransfer *)transfer())->IsZeroState())
 				OnPexAddCertZeroState(evb);
 			else
 				OnPexAddCert(evb);
 			break;
 		case SWIFT_PEX_REQ:
+			if (transfer()->IsPexOn())
+				break;
 			if (transfer()->ttype() == FILE_TRANSFER && ((FileTransfer *)transfer())->IsZeroState())
 				OnPexReqZeroState(evb);
 			else

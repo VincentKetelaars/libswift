@@ -425,6 +425,9 @@ namespace swift {
         void		SetTD(int td);
         // Gertjan fix: return bool
         bool            OnPexIn(const Address& addr);
+        // Vincent Peer exchange on
+        bool			IsPexOn() { return pex_on; }
+        void			SetPexOn(bool on) { pex_on = on; }
         // Gertjan
         Channel *       RandomChannel(Channel *notc);
         /** Arno: Return the Channel to peer "addr" that is not equal to "notc". */
@@ -513,6 +516,9 @@ namespace swift {
 
         // Ric: slow start 4 requesting hints
         uint32_t        slow_start_hints_;
+
+        // Vincent: Peer exchange on
+        bool			pex_on;
     };
 
 

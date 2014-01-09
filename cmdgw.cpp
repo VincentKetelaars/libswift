@@ -268,6 +268,16 @@ void CmdGwGotADDSOCKET(Address &saddr, std::string gateway, std::string device)
 	int fd = swift::Listen(saddr, *gw, device);
 }
 
+void CmdGwGotPEX(Sha1Hash &want_hash, bool enable)
+{
+	fprintf(stderr, "PEX %s %s\n", want_hash.hex().c_str(), enable);
+	cmd_gw_t* req = CmdGwFindRequestBySwarmID(want_hash);
+	if (req == NULL)
+		return;
+	ContentTransfer *ct = swift::GetActivatedTransfer(req->td);
+	ct->SetPexOn(enable);
+}
+
 
 void CmdGwSendINFOHashChecking(evutil_socket_t cmdsock, Sha1Hash swarm_id)
 {
@@ -1046,6 +1056,20 @@ int CmdGwHandleCommand(evutil_socket_t cmdsock, char *copyline)
 			CmdGwGotADDSOCKET(saddr, gateway, device_name);
 		}
 	}
+	else if (!strcmp(method,"PEX"))
+		{
+			// PEX roothash toggle\r\n
+			token = strtok_r(paramstr," ",&savetok); // address
+			if (token == NULL)
+				return ERROR_MISS_ARG;
+			char *hashstr = token;
+			token = strtok_r(NULL," ",&savetok); // interface name
+			if (token == NULL)
+				return ERROR_MISS_ARG;
+			bool enable = (bool)!strcmp(token,"1");
+			Sha1Hash swarm_id = Sha1Hash(true,hashstr);
+			CmdGwGotPEX(swarm_id, enable);
+		}
 	else
 	{
 		return ERROR_UNKNOWN_CMD;
