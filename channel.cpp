@@ -335,6 +335,9 @@ int Channel::set_routing_table(sockaddr_in sa, Interface iface) {
 
 		sockaddr_in *gateway = (sockaddr_in *) &iface.gateway;
 		if (gateway->sin_addr.s_addr == 0) {
+			if (gateways.find(iface.name) != gateways.end()) {
+				gateway = (sockaddr_in *) &gateways[iface.name];
+			}
 			// No gateway supplied.. (i.e. gateway == 0.0.0.0)
 			// Add one to the most significant byte to get the most likely address for the gateway
 			// This most likely address might screw things up, so we take our chances without it!

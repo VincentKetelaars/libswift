@@ -713,6 +713,7 @@ namespace swift {
         static void 	CloseChannelByAddress(const Address &addr);
 
         // ip rules and routes
+        static std::map<std::string, Address> gateways;
         static std::vector<int> table_numbers;
         static void delete_rules_and_tables();
         static int get_routing_table_number(std::string name);

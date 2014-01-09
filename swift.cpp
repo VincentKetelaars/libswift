@@ -50,6 +50,7 @@ void usage(void)
 	fprintf(stderr,"  -B\tdebugging logs to stdout (win32 hack)\n");
 	fprintf(stderr,"  -p, --progress\treport transfer progress\n");
 	fprintf(stderr,"  -g, --httpgw\t[ip:|host:]port to bind HTTP content gateway to (no default)\n");
+	fprintf(stderr,"  -R, --route\tinterface=ip to supply interface gateway (no default)\n");
 	fprintf(stderr,"  -s, --statsgw\t[ip:|host:]port to bind HTTP stats listen socket to (no default)\n");
 	fprintf(stderr,"  -c, --cmdgw\t[ip:|host:]port to bind CMD listen socket to (no default)\n");
 	fprintf(stderr,"  -o, --destdir\tdirectory for saving data (default: none)\n");
@@ -128,6 +129,9 @@ struct evbuffer *livesource_evb = NULL;
 long long int cmdgw_report_counter=0;
 long long int cmdgw_report_interval=REPORT_INTERVAL; // seconds
 
+// Vincent
+std::map<std::string, Address> Channel::gateways;
+
 
 static void fatal_callback(int err) {
 	fprintf(stderr, "FATAL CALLBACK: %d", err);
@@ -151,6 +155,7 @@ int utf8main (int argc, char** argv)
 			{"debug",   no_argument, 0, 'D'},
 			{"progress",no_argument, 0, 'p'},
 			{"httpgw",  required_argument, 0, 'g'},
+			{"route",  required_argument, 0, 'R'},
 			{"wait",    optional_argument, 0, 'w'},
 			{"nat-test",no_argument, 0, 'N'},
 			{"statsgw", required_argument, 0, 's'}, // SWIFTPROC
@@ -193,7 +198,7 @@ int utf8main (int argc, char** argv)
 	Channel::evbase = event_base_new();
 
 	int c,n;
-	while ( -1 != (c = getopt_long (argc, argv, ":h:f:d:l:t:D:pg:s:c:o:u:y:z:wBNHmM:e:r:ji:kC:1:2:3:T:G", long_options, 0)) ) {
+	while ( -1 != (c = getopt_long (argc, argv, ":h:f:d:l:R:t:D:pg:s:c:o:u:y:z:wBNHmM:e:r:ji:kC:1:2:3:T:G", long_options, 0)) ) {
 		switch (c) {
 		case 'h':
 			if (strlen(optarg)!=40)
@@ -211,7 +216,6 @@ int utf8main (int argc, char** argv)
 		case 'l':
 		{
 			std::vector<std::string> addrs;
-			std::string str(optarg);
 			split(optarg, ',', addrs);
 			for (int i = 0; i < addrs.size(); i++) {
 				bindaddr = Address(addrs[i].c_str());
@@ -219,6 +223,20 @@ int utf8main (int argc, char** argv)
 					quit("address must be hostname:port, ip:port or just port\n");
 				wait_time = TINT_NEVER;
 				bindaddrs.push_back(bindaddr);
+			}
+			break;
+		}
+		case 'R':
+		{
+			std::vector<std::string> Rargs;
+			split(optarg, ',', Rargs);
+			for (int i = 0; i < Rargs.size(); i++) {
+				std::vector<std::string> pair;
+				split(Rargs[i], '=', pair);
+				Address gateway = Address(pair[1].c_str());
+				if (gateway==Address())
+					quit("Gateway must be ip address");
+				Channel::gateways[pair[0]] = gateway;
 			}
 			break;
 		}
