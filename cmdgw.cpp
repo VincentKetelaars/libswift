@@ -445,6 +445,19 @@ void CmdGwSendSOCKETINFOBySocket(evutil_socket_t cmdsock, Address sock_addr, int
 	free(wire);
 }
 
+void CmdGwSendCHANNELCLOSEDBySocket(evutil_socket_t cmdsock, const Sha1Hash& roothash, Address sock_addr, Address peer_addr)
+{
+	std::ostringstream oss;
+	oss << "CHANNELCLOSED " << roothash.hex() << " " << sock_addr.str() << " " << peer_addr.str() << "\r\n";
+
+	if (cmd_gw_debug)
+		fprintf(stderr,"cmd: SendCHANNELCLOSED: %s\n", oss.str().c_str() );
+
+	char *wire = strdup(oss.str().c_str());
+	send(cmdsock,wire,strlen(wire),0);
+	free(wire);
+}
+
 /*
  * For VOD and Live, wait until PREBUF_BYTES are in before sending PLAY.
  */
@@ -1142,6 +1155,10 @@ void onSendToInfoCallback(Address sock_addr, int state) {
 	CmdGwSendSOCKETINFOBySocket(cmd_tunnel_sock, sock_addr, state);
 }
 
+void onChannelClosedCallback(const Sha1Hash& roothash, Address sock_addr, Address peer_addr) {
+	CmdGwSendCHANNELCLOSEDBySocket(cmd_tunnel_sock, roothash, sock_addr, peer_addr);
+}
+
 bool InstallCmdGateway (struct event_base *evbase,Address cmdaddr,Address httpaddr)
 {
 	// Allocate libevent listener for cmd connections
@@ -1165,6 +1182,7 @@ bool InstallCmdGateway (struct event_base *evbase,Address cmdaddr,Address httpad
 	cmd_evbuffer = evbuffer_new();
 
 	Channel::SetOnSendToInfoCallback(onSendToInfoCallback);
+	Channel::SetOnChannelClosedCallback(onChannelClosedCallback);
 
 	return true;
 }

@@ -45,6 +45,7 @@ FILE* Channel::debug_file = stderr;
 tint Channel::MIN_PEX_REQUEST_INTERVAL = TINT_SEC;
 std::vector<int> Channel::table_numbers;
 void (*Channel::onSendToInfoCallback)(Address, int);
+void (*Channel::onChannelClosedCallback)(const Sha1Hash&, Address, Address);
 std::map<evutil_socket_t, Channel::socket_if_info> Channel::socket_if_info_map;
 
 /*
@@ -110,6 +111,9 @@ Channel::Channel(ContentTransfer* transfer, int socket, Address peer_addr,bool p
 	//fprintf(stderr,"new Channel %d %s\n", id_, peer_.str().c_str() );
 }
 
+void Channel::SetOnChannelClosedCallback(void (*callback)(const Sha1Hash&, Address, Address)) {
+	Channel::onChannelClosedCallback = callback;
+}
 
 Channel::~Channel () {
 	dprintf("%s #%u dealloc channel\n",tintstr(),id_);
@@ -133,6 +137,8 @@ Channel::~Channel () {
 		delete hs_in_;
 	if (hs_out_ != NULL)
 		delete hs_out_;
+	if (Channel::onChannelClosedCallback) // Callback available
+		Channel::onChannelClosedCallback(hashtree()->root_hash(), BoundAddress(mysocket()), peer());
 }
 
 

@@ -756,9 +756,11 @@ namespace swift {
         static std::map<evutil_socket_t, socket_if_info> socket_if_info_map;
         static void updateSocketIfInfo(evutil_socket_t sock, int err);
 
-        // Callback
+        // Callbacks
         static void		(*onSendToInfoCallback)(Address, int);
         static void		SetOnSendToInfoCallback(void (*callback)(Address, int));
+        static void		(*onChannelClosedCallback)(const Sha1Hash&, Address, Address);
+        static void		SetOnChannelClosedCallback(void (*callback)(const Sha1Hash&, Address, Address));
 
         // Ric: used for testing LEDBAT's behaviour
         float		GetCwnd() { return cwnd_; }
