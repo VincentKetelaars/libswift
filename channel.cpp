@@ -75,6 +75,7 @@ Channel::Channel(ContentTransfer* transfer, int socket, Address peer_addr,bool p
     																ack_not_rcvd_recent_(0), owd_min_bin_(0), owd_min_bin_start_(NOW),
     																owd_cur_bin_(0), dgrams_sent_(0), dgrams_rcvd_(0),
     																raw_bytes_up_(0), raw_bytes_down_(0), bytes_up_(0), bytes_down_(0),
+    																speedupcount_(0), speeddwcount_(0),
     																scheduled4del_(false),
     																direct_sending_(false),
     																peer_is_source_(peerissource),
@@ -83,6 +84,9 @@ Channel::Channel(ContentTransfer* transfer, int socket, Address peer_addr,bool p
 {
 	if (peer_==Address())
 		peer_ = tracker;
+
+	cur_speed_[DDIR_UPLOAD] = MovingAverageSpeed();
+	cur_speed_[DDIR_DOWNLOAD] = MovingAverageSpeed();
 
 	this->id_ = channels.size();
 	channels.push_back(this);
@@ -625,6 +629,49 @@ channels_t Channel::GetChannelsBySocket(evutil_socket_t sock) {
 		}
 	}
 	return cbs;
+}
+
+
+// SPEED
+void Channel::OnRecvData(int n)
+{
+	speeddwcount_++;
+	uint32_t speed = cur_speed_[DDIR_DOWNLOAD].GetSpeedNeutral();
+	uint32_t rate = speed & ~1048575 ? 32:8;
+	if (speeddwcount_>=rate)
+	{
+		cur_speed_[DDIR_DOWNLOAD].AddPoint((uint64_t)n*rate);
+		speeddwcount_=0;
+	}
+	transfer()->OnRecvData(n);
+}
+
+void Channel::OnSendData(int n)
+{
+	speedupcount_++;
+	uint32_t speed = cur_speed_[DDIR_UPLOAD].GetSpeedNeutral();
+	uint32_t rate = speed & ~1048575 ? 32:8;
+	if (speedupcount_>=rate)
+	{
+		cur_speed_[DDIR_UPLOAD].AddPoint((uint64_t)n*rate);
+		speedupcount_ = 0;
+	}
+	transfer()->OnSendData(n);
+}
+
+
+void Channel::OnRecvNoData()
+{
+	// AddPoint(0) everytime we don't AddData gives bad speed measurement
+	cur_speed_[DDIR_DOWNLOAD].AddPoint((uint64_t)0);
+	transfer()->OnRecvNoData();
+}
+
+void Channel::OnSendNoData()
+{
+	// AddPoint(0) everytime we don't SendData gives bad speed measurement
+	cur_speed_[DDIR_UPLOAD].AddPoint((uint64_t)0);
+	transfer()->OnSendNoData();
 }
 
 

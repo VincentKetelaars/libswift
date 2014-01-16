@@ -366,7 +366,9 @@ void CmdGwSendINFO(cmd_gw_t* req, int dlstatus)
 				oss << "\"raw_bytes_up\": " << c->raw_bytes_up() << ", ";
 				oss << "\"raw_bytes_down\": " << c->raw_bytes_down() << ", ";
 				oss << "\"bytes_up\": " << c->bytes_up() << ", ";
-				oss << "\"bytes_down\": " << c->bytes_down() << " ";
+				oss << "\"bytes_down\": " << c->bytes_down() << ", ";
+				oss << "\"cur_speed_up\": " << c->GetCurrentSpeed(DDIR_UPLOAD) << ", ";
+				oss << "\"cur_speed_down\": " << c->GetCurrentSpeed(DDIR_DOWNLOAD) << " ";
 				oss << "}";
 			}
 		}

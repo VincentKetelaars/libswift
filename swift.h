@@ -811,6 +811,11 @@ namespace swift {
         /** Arno: return (UDP) port for this channel */
         uint16_t    GetMyPort();
         bool        IsDiffSenderOrDuplicate(Address addr, uint32_t chid);
+        // Vincent: update speed
+		void        OnRecvData(int n);
+		void        OnSendData(int n);
+		void        OnSendNoData();
+		void        OnRecvNoData();
 
         static int  MAX_REORDERING;
         static tint TIMEOUT;
@@ -845,6 +850,7 @@ namespace swift {
         uint64_t    raw_bytes_down() { return raw_bytes_down_; }
         uint64_t    bytes_up() { return bytes_up_; }
         uint64_t    bytes_down() { return bytes_down_; }
+        double      GetCurrentSpeed(data_direction_t ddir) { return cur_speed_[ddir].GetSpeedNeutral(); }
 
         static int  DecodeID(int scrambled);
         static int  EncodeID(int unscrambled);
@@ -958,6 +964,10 @@ namespace swift {
         int         dgrams_rcvd_;
         // Arno, 2011-11-28: for detailed, per-peer stats. MORESTATS
         uint64_t raw_bytes_up_, raw_bytes_down_, bytes_up_, bytes_down_;
+        // Vincent, 2014-01-16: Detailed speeds stats per channel
+        MovingAverageSpeed cur_speed_[2];
+        uint32_t        speedupcount_;
+        uint32_t        speeddwcount_;
 
         // SAFECLOSE
         bool        scheduled4del_;
