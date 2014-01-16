@@ -10,6 +10,8 @@
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
 #include <event2/listener.h>
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
 
 #include <iostream>
 #include <sstream>
@@ -284,7 +286,7 @@ void CmdGwSendINFOHashChecking(evutil_socket_t cmdsock, Sha1Hash swarm_id)
 	// Send INFO DLSTATUS_HASHCHECKING message.
 
 	char cmd[MAX_CMD_MESSAGE];
-	sprintf(cmd,"INFO %s %d %lui/%lui %lf %lf %u %u\r\n",swarm_id.hex().c_str(),DLSTATUS_HASHCHECKING,(uint64_t)0,(uint64_t)0,0.0,0.0,0,0);
+	sprintf(cmd,"INFO %s %d %" PRIu64 "/%" PRIu64 " %lf %lf %u %u\r\n",swarm_id.hex().c_str(),DLSTATUS_HASHCHECKING,(uint64_t)0,(uint64_t)0,0.0,0.0,0,0);
 
 	//fprintf(stderr,"cmd: SendINFO: %s", cmd);
 	send(cmdsock,cmd,strlen(cmd),0);
@@ -321,7 +323,7 @@ void CmdGwSendINFO(cmd_gw_t* req, int dlstatus)
 	double ulspeed = swift::GetCurrentSpeed(req->td,DDIR_UPLOAD);
 
 	char cmd[MAX_CMD_MESSAGE];
-	sprintf(cmd,"INFO %s %d %lui/%lui %lf %lf %u %u\r\n",swarm_id.hex().c_str(),dlstatus,complete,size,dlspeed,ulspeed,numleech,numseeds);
+	sprintf(cmd,"INFO %s %d %" PRIu64 "/%" PRIu64 " %lf %lf %u %u\r\n",swarm_id.hex().c_str(),dlstatus,complete,size,dlspeed,ulspeed,numleech,numseeds);
 
 	send(req->cmdsock,cmd,strlen(cmd),0);
 
@@ -665,8 +667,8 @@ void CmdGwProcessData(evutil_socket_t cmdsock)
 		// Got "TUNNELSEND addr size\r\n" command, now read
 		// size bytes, i.e., cmd_tunnel_expect bytes.
 
-		if (cmd_gw_debug)
-			fprintf(stderr,"cmdgw: procTCPdata: tunnel state, got %lu, want %d\n", evbuffer_get_length(cmd_evbuffer), cmd_tunnel_expect );
+		if (cmd_gw_debug) // %lu should work fine for size_t, but %zu should be the actual best option
+			fprintf(stderr,"cmdgw: procTCPdata: tunnel state, got %zu, want %d\n", evbuffer_get_length(cmd_evbuffer), cmd_tunnel_expect );
 
 		if (evbuffer_get_length(cmd_evbuffer) >= cmd_tunnel_expect)
 		{
@@ -1174,8 +1176,8 @@ void swift::CmdGwTunnelUDPDataCameIn(Address srcaddr, uint32_t srcchan, struct e
 {
 	// Message received on UDP socket, forward over TCP conn.
 
-	if (cmd_gw_debug)
-		fprintf(stderr,"cmdgw: TunnelUDPData:DataCameIn %lu bytes from %s/%08x\n", evbuffer_get_length(evb), srcaddr.str().c_str(), srcchan );
+	if (cmd_gw_debug) // Use either %lu or %zu
+		fprintf(stderr,"cmdgw: TunnelUDPData:DataCameIn %zu bytes from %s/%08x\n", evbuffer_get_length(evb), srcaddr.str().c_str(), srcchan );
 
 	/*
 	 *  Format:
