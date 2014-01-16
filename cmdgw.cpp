@@ -270,7 +270,7 @@ void CmdGwGotADDSOCKET(Address &saddr, std::string gateway, std::string device)
 
 void CmdGwGotPEX(Sha1Hash &want_hash, bool enable)
 {
-	fprintf(stderr, "PEX %s %s\n", want_hash.hex().c_str(), enable);
+	fprintf(stderr, "PEX %s %d\n", want_hash.hex().c_str(), enable);
 	cmd_gw_t* req = CmdGwFindRequestBySwarmID(want_hash);
 	if (req == NULL)
 		return;
@@ -284,7 +284,7 @@ void CmdGwSendINFOHashChecking(evutil_socket_t cmdsock, Sha1Hash swarm_id)
 	// Send INFO DLSTATUS_HASHCHECKING message.
 
 	char cmd[MAX_CMD_MESSAGE];
-	sprintf(cmd,"INFO %s %d %lli/%lli %lf %lf %u %u\r\n",swarm_id.hex().c_str(),DLSTATUS_HASHCHECKING,(uint64_t)0,(uint64_t)0,0.0,0.0,0,0);
+	sprintf(cmd,"INFO %s %d %lui/%lui %lf %lf %u %u\r\n",swarm_id.hex().c_str(),DLSTATUS_HASHCHECKING,(uint64_t)0,(uint64_t)0,0.0,0.0,0,0);
 
 	//fprintf(stderr,"cmd: SendINFO: %s", cmd);
 	send(cmdsock,cmd,strlen(cmd),0);
@@ -321,7 +321,7 @@ void CmdGwSendINFO(cmd_gw_t* req, int dlstatus)
 	double ulspeed = swift::GetCurrentSpeed(req->td,DDIR_UPLOAD);
 
 	char cmd[MAX_CMD_MESSAGE];
-	sprintf(cmd,"INFO %s %d %llu/%ld %lf %lf %u %u\r\n",swarm_id.hex().c_str(),dlstatus,complete,size,dlspeed,ulspeed,numleech,numseeds);
+	sprintf(cmd,"INFO %s %d %lui/%lui %lf %lf %u %u\r\n",swarm_id.hex().c_str(),dlstatus,complete,size,dlspeed,ulspeed,numleech,numseeds);
 
 	send(req->cmdsock,cmd,strlen(cmd),0);
 
