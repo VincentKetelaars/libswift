@@ -12,7 +12,8 @@
 #include <event2/listener.h>
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
-
+#include <sys/ioctl.h>
+#include <linux/sockios.h>
 #include <iostream>
 #include <sstream>
 
@@ -348,6 +349,7 @@ void CmdGwSendINFO(cmd_gw_t* req, int dlstatus)
 		oss << "[";
 		if (peerchans != NULL)
 		{
+			int send_queue_bytes;
 			for (iter=peerchans->begin(); iter!=peerchans->end(); iter++) {
 				Channel *c = *iter;
 				if (c == NULL)
@@ -360,6 +362,10 @@ void CmdGwSendINFO(cmd_gw_t* req, int dlstatus)
 				if (sock_addr != Address()) {
 					oss << "\"socket_ip\": \"" << sock_addr.ipstr() << "\", ";
 					oss << "\"socket_port\": \"" << sock_addr.port() << "\", ";
+					ioctl(c->mysocket(), SIOCOUTQ, &send_queue_bytes);
+					oss << "\"send_queue\": \"" << send_queue_bytes << "\", ";
+					oss << "\"last_drop\": \"" << c->last_lost_time() << "\", ";
+					oss << "\"avg_rtt\": \"" << c->average_round_trip_time() << "\", ";
 				}
 				oss << "\"ip\": \"" << c->peer().ipstr() << "\", ";
 				oss << "\"port\": " << c->peer().port() << ", ";
