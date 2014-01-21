@@ -851,7 +851,6 @@ namespace swift {
         uint64_t    bytes_up() { return bytes_up_; }
         uint64_t    bytes_down() { return bytes_down_; }
         double      GetCurrentSpeed(data_direction_t ddir) { return cur_speed_[ddir].GetSpeedNeutral(); }
-        tint 		last_lost_time() { return last_loss_time_; }
         tint		average_round_trip_time() { return rtt_avg_; }
 
 

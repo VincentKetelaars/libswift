@@ -361,11 +361,9 @@ void CmdGwSendINFO(cmd_gw_t* req, int dlstatus)
 				Address sock_addr = swift::BoundAddress(c->mysocket());
 				if (sock_addr != Address()) {
 					oss << "\"socket_ip\": \"" << sock_addr.ipstr() << "\", ";
-					oss << "\"socket_port\": \"" << sock_addr.port() << "\", ";
+					oss << "\"socket_port\": " << sock_addr.port() << ", ";
 					ioctl(c->mysocket(), SIOCOUTQ, &send_queue_bytes);
-					oss << "\"send_queue\": \"" << send_queue_bytes << "\", ";
-					oss << "\"last_drop\": \"" << c->last_lost_time() << "\", ";
-					oss << "\"avg_rtt\": \"" << c->average_round_trip_time() << "\", ";
+					oss << "\"send_queue\": " << send_queue_bytes << ", ";
 				}
 				oss << "\"ip\": \"" << c->peer().ipstr() << "\", ";
 				oss << "\"port\": " << c->peer().port() << ", ";
@@ -374,7 +372,8 @@ void CmdGwSendINFO(cmd_gw_t* req, int dlstatus)
 				oss << "\"bytes_up\": " << c->bytes_up() << ", ";
 				oss << "\"bytes_down\": " << c->bytes_down() << ", ";
 				oss << "\"cur_speed_up\": " << c->GetCurrentSpeed(DDIR_UPLOAD) << ", ";
-				oss << "\"cur_speed_down\": " << c->GetCurrentSpeed(DDIR_DOWNLOAD) << " ";
+				oss << "\"cur_speed_down\": " << c->GetCurrentSpeed(DDIR_DOWNLOAD) << ", ";
+				oss << "\"avg_rtt\": " << c->average_round_trip_time() << " ";
 				oss << "}";
 			}
 		}
