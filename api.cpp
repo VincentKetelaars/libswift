@@ -38,7 +38,7 @@ void StartLibraryCleanup()
  * Global Operations
  */
 
-int     swift::Listen(Address addr, sockaddr gateway, std::string device)
+int     swift::Listen(Address addr, std::string device)
 {
 	/*
 	 * Listen policy:
@@ -94,7 +94,7 @@ int     swift::Listen(Address addr, sockaddr gateway, std::string device)
 
 	sckrwecb_t cb;
 	cb.may_read = &Channel::LibeventReceiveCallback;
-	cb.sock = Channel::Bind(addr,cb, gateway, device);
+	cb.sock = Channel::Bind(addr, cb, device);
 	// There might be a totally different IP address in use than suggested by addr
 	if (cb.sock != INVALID_SOCKET && addr.port() == 0) {
 		if (addr.get_family() == AF_INET) {

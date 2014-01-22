@@ -408,7 +408,7 @@ Interface Channel::ipv4_to_if(sockaddr_in *find, std::map<string, short> pifs) {
 }
 
 // SOCKMGMT
-evutil_socket_t Channel::Bind (Address address, sckrwecb_t callbacks, sockaddr gateway, std::string device) {
+evutil_socket_t Channel::Bind (Address address, sckrwecb_t callbacks, std::string device) {
 	struct sockaddr_storage sa = address;
 	evutil_socket_t fd;
 	// Arno, 2013-06-05: MacOS X bind fails if sizeof(struct sockaddr_storage) is passed.
@@ -437,7 +437,6 @@ evutil_socket_t Channel::Bind (Address address, sckrwecb_t callbacks, sockaddr g
 			fprintf(stderr, "No interface has been found\n");
 			return -1;
 		}
-		iface.gateway = gateway;
 		set_routing_table(*si, iface);
 
 		if ( setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, iface.name.c_str(), iface.name.size()) < 0) {

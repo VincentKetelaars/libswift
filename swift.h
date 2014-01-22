@@ -728,7 +728,7 @@ namespace swift {
         static void     RecvDatagram (evutil_socket_t socket); // Called by LibeventReceiveCallback
         static int      RecvFrom(evutil_socket_t sock, Address& addr, struct evbuffer *evb); // Called by RecvDatagram
         static int      SendTo(evutil_socket_t sock, const Address& addr, struct evbuffer *evb); // Called by Channel::Send()
-        static evutil_socket_t Bind(Address address, sckrwecb_t callbacks=sckrwecb_t(), sockaddr gateway=sockaddr(), std::string device=UNKNOWN_INTERFACE);
+        static evutil_socket_t Bind(Address address, sckrwecb_t callbacks=sckrwecb_t(), std::string device=UNKNOWN_INTERFACE);
         static Address  BoundAddress(evutil_socket_t sock);
         static evutil_socket_t GetSocket(Address &saddr);
         static evutil_socket_t GetSimilarSocket(std::string device, Address address);
@@ -1195,7 +1195,7 @@ namespace swift {
     void    LibraryInit(void);
 
     /** Start listening a port. Returns socket descriptor. */
-    int     Listen (Address addr, sockaddr gateway=sockaddr(), std::string device=UNKNOWN_INTERFACE);
+    int     Listen (Address addr, std::string device=UNKNOWN_INTERFACE);
     /** Stop listening to a port. */
     /** Get the address bound to the socket descriptor returned by Listen() */
     Address BoundAddress(evutil_socket_t sock);

@@ -252,23 +252,15 @@ void CmdGwGotPEERADDR(Sha1Hash &want_hash, Address &peer, Address &saddr)
 	swift::AddPeer(peer, fd, want_hash);
 }
 
-void CmdGwGotADDSOCKET(Address &saddr, std::string gateway, std::string device)
+void CmdGwGotADDSOCKET(Address &saddr, std::string gateway, std::string if_name, std::string device)
 {
 	// Create a new socket
-	fprintf(stderr, "ADDSOCKET %s %s %s\n", saddr.str().c_str(), gateway.c_str(), device.c_str());
-	struct sockaddr *gw;
-	if (saddr.get_family() == AF_INET) {
-		struct sockaddr_in si;
-		si.sin_family = AF_INET;
-		inet_aton(gateway.c_str(), &si.sin_addr);
-		gw = (sockaddr *) &si;
-	} else { // AF_INET6
-		struct sockaddr_in6 si;
-		si.sin6_family = AF_INET6;
-		inet_pton(AF_INET6, gateway.c_str(), &si.sin6_addr);
-		gw = (sockaddr *) &si;
+	fprintf(stderr, "ADDSOCKET %s %s %s %s\n", saddr.str().c_str(), gateway.c_str(), if_name.c_str(), device.c_str());
+	Address gw = Address(gateway.c_str());
+	if (if_name != UNKNOWN_INTERFACE and gw != Address()) {
+		Channel::gateways[if_name] = gw;
 	}
-	int fd = swift::Listen(saddr, *gw, device);
+	int fd = swift::Listen(saddr, device);
 }
 
 void CmdGwGotPEX(Sha1Hash &want_hash, bool enable)
@@ -1064,10 +1056,14 @@ int CmdGwHandleCommand(evutil_socket_t cmdsock, char *copyline)
 		if (token == NULL)
 			return ERROR_MISS_ARG;
 		char *addrstr = token;
-		token = strtok_r(NULL," ",&savetok); // interface name
+		token = strtok_r(NULL," ",&savetok); // interface gateway address
 		std::string gateway = "0.0.0.0";
 		if (token != NULL)
 			gateway.assign(token);
+		token = strtok_r(NULL," ",&savetok); // interface name
+		std::string if_name = UNKNOWN_INTERFACE;
+		if (token != NULL)
+			if_name.assign(token);
 		token = strtok_r(NULL," ",&savetok); // device name
 		std::string device_name = UNKNOWN_INTERFACE;
 		if (token != NULL)
@@ -1075,7 +1071,7 @@ int CmdGwHandleCommand(evutil_socket_t cmdsock, char *copyline)
 
 		Address saddr = Address(addrstr);
 		if (saddr != Address()) {
-			CmdGwGotADDSOCKET(saddr, gateway, device_name);
+			CmdGwGotADDSOCKET(saddr, gateway, if_name, device_name);
 		}
 	}
 	else if (!strcmp(method,"PEX"))
