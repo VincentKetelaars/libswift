@@ -164,10 +164,9 @@ namespace swift {
     	struct sockaddr netmask;
     	struct sockaddr gateway;
     	std::string device;
-    	Interface() : name(UNKNOWN_INTERFACE) {}
-    	Interface(sockaddr ip) : name(UNKNOWN_INTERFACE), ip(ip) {}
-    	Interface(sockaddr ip, sockaddr gateway, std::string device) : name(UNKNOWN_INTERFACE), ip(ip), gateway(gateway), device(device) {}
-    	Interface(std::string name, sockaddr ip, sockaddr netmask) : name(name), ip(ip), netmask(netmask) {}
+    	Interface() : name(UNKNOWN_INTERFACE), ip(), netmask(), gateway(), device(UNKNOWN_INTERFACE) {}
+    	Interface(sockaddr ip, sockaddr gateway, std::string device) : name(UNKNOWN_INTERFACE), ip(ip), netmask(), gateway(gateway), device(device) {}
+    	Interface(std::string name, sockaddr ip, sockaddr netmask) : name(name), ip(ip), netmask(netmask), gateway(), device(UNKNOWN_INTERFACE) {}
     };
 
 // Arno, 2011-10-03: Use libevent callback functions, no on_error?
