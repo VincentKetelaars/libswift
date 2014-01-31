@@ -285,7 +285,9 @@ void Channel::delete_rules_and_tables() {
 
 		oss.str("");
 		oss << "ip rule delete table " << table_numbers[i];
-		sys_call(oss.str().c_str());
+		int res = 0;
+		while (res == 0)
+			res = system(oss.str().c_str()); // Remove all rules related to this table
 	}
 }
 
@@ -322,12 +324,20 @@ int Channel::set_routing_table(sockaddr_in sa, Interface iface) {
 
 	if (table_num > 0) {
 		std::ostringstream oss;
-		oss << "ip route flush table " << table_num;
+		oss << "ip route flush table " << table_num; // Empty table first in case there are routes left from previous interface
 		sys_call(oss.str().c_str());
 
-		// By default the rule should be entered in the list with higher priority than the main table
+		// Might not strictly be necessary to remove all of them, because newer rules are looked up first, but this is cleaner
 		oss.str("");
-		oss << "ip rule add from " << ip << " table " << table_num;
+		oss << "ip rule delete table " << table_num; // Remove rule related to this table
+		int res = 0;
+		while (res == 0)
+			res = system(oss.str().c_str());
+
+		// By default the rule should be entered in the list with higher priority than the main table
+		// TODO: We could use the netmask to widen the range to the entire subnet, but is there a point?
+		oss.str("");
+		oss << "ip rule add from " << ip << " table " << table_num; // Everything going out from this ip
 		sys_call(oss.str().c_str());
 
 		sockaddr_in *netmask = (sockaddr_in *) &iface.netmask;
@@ -359,6 +369,11 @@ int Channel::set_routing_table(sockaddr_in sa, Interface iface) {
 			oss.str("");
 			oss << "ip route add dev " << iface.name.c_str() << " default via " << inet_ntoa(gateway->sin_addr) << " table " << table_num;
 			sys_call(oss.str().c_str());
+
+			// We will try this on the main table as well, in case there is nothing there..
+//			oss.str("");
+//			oss << "ip route add dev " << iface.name.c_str() << " default via " << inet_ntoa(gateway->sin_addr);
+//			sys_call(oss.str().c_str());
 		}
 
 		table_numbers.push_back(table_num);
