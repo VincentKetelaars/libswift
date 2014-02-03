@@ -340,6 +340,11 @@ int Channel::set_routing_table(sockaddr_in sa, Interface iface) {
 		oss << "ip rule add from " << ip << " table " << table_num; // Everything going out from this ip
 		sys_call(oss.str().c_str());
 
+		// Also incoming packets should be directed to this table
+		oss.str("");
+		oss << "ip rule add to " << ip << " table " << table_num; // Everything going out from this ip
+		sys_call(oss.str().c_str());
+
 		sockaddr_in *netmask = (sockaddr_in *) &iface.netmask;
 		struct in_addr addr = sa.sin_addr;
 		addr.s_addr &= netmask->sin_addr.s_addr; // Set netmask zero bits to zero to get the base ip address
@@ -348,7 +353,7 @@ int Channel::set_routing_table(sockaddr_in sa, Interface iface) {
 
 		//		fprintf(stderr, "GATEWAY %s\n", inet_ntoa(addr));
 
-		// Is this one necessary? Probably in the case of point to point networks only.. So yeah.
+		// This determines that routes to this subnet will go through dev interface
 		oss.str("");
 		oss << "ip route add dev " << iface.name.c_str() << " " << inet_ntoa(addr) << "/" << b.count() << " table " << table_num;
 		sys_call(oss.str().c_str());
