@@ -141,7 +141,7 @@ Channel::~Channel () {
 		delete hs_in_;
 	if (hs_out_ != NULL)
 		delete hs_out_;
-	if (Channel::onChannelClosedCallback) // Callback available
+	if (Channel::onChannelClosedCallback and hashtree() != NULL) // Callback available
 		Channel::onChannelClosedCallback(hashtree()->root_hash(), BoundAddress(mysocket()), peer());
 }
 

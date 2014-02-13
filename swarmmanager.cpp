@@ -511,7 +511,7 @@ void SwarmManager::RemoveSwarm( const Sha1Hash& rootHash, bool removeState, bool
             print_error("Could not remove file");
         }
     }
-    
+
     invariant();
     exit( "removeswarm" );
 }

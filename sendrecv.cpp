@@ -711,7 +711,6 @@ void    Channel::Recv (struct evbuffer *evb) {
 		dev_avg_ = rtt_avg_;
 		dip_avg_ = rtt_avg_;
 		dprintf("%s #%u sendctrl rtt init %lld\n",tintstr(),id_,rtt_avg_);
-		fprintf(stderr,"%s #%u sendctrl rtt init %lld\n",tintstr(),id_,rtt_avg_);
 	}
 
 	bin_t data = evbuffer_get_length(evb) ? bin_t::NONE : bin_t::ALL;
