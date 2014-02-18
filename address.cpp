@@ -251,6 +251,9 @@ std::string Address::ipstr(bool includeport) const
 	int idx = nodestr.find("%");
 	if (idx != std::string::npos)
 	    nodestr = nodestr.substr(0,idx);
+	// Vincent: Print it as we would like to get it
+	if (addr.ss_family == AF_INET6)
+	    nodestr = "[" + nodestr + "]";
 
 	if (includeport)
 	    return nodestr+":"+std::string(service);

@@ -104,7 +104,9 @@ int     swift::Listen(Address addr, std::string device)
 				perror("getsockname");
 			Channel::socket_if_info_map[cb.sock].address.set_port(ntohs(sin.sin_port)); // Update the port number
 		}
-		// TODO: get port number for IPv6 also.
+		if (addr.get_family() == AF_INET6) {
+
+		}
 	}
 	if (cb.sock != INVALID_SOCKET) {
 		// This print will be read by Dispersy to ensure that we have a new working socket

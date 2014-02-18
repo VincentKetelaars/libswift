@@ -717,7 +717,8 @@ namespace swift {
         static void delete_rules_and_tables();
         static int get_routing_table_number(std::string name);
         static int set_routing_table(sockaddr_in sa, Interface iface);
-        static Interface ipv4_to_if(sockaddr_in *find, std::map<std::string, short> pifs);
+        static Interface ipv4_to_if(sockaddr_in *find);
+        static int ipv6_name_and_scope(sockaddr_in6 *find, Interface *iface);
 
         // SOCKMGMT
         // Arno: channel is also a "singleton" class that manages all sockets

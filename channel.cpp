@@ -386,12 +386,10 @@ int Channel::set_routing_table(sockaddr_in sa, Interface iface) {
 	return table_num;
 }
 
-Interface Channel::ipv4_to_if(sockaddr_in *find, std::map<string, short> pifs) {
+Interface Channel::ipv4_to_if(sockaddr_in *find) {
 	struct ifaddrs *addrs, *iap;
-	struct sockaddr_in *sa, *temp_netmask, netmask;
-	struct in_addr si;
-	std::string buf = UNKNOWN_INTERFACE;
-	short priority = 0;
+	struct sockaddr_in *sa, *temp_netmask;
+	Interface iface;
 
 	getifaddrs(&addrs);
 	for (iap = addrs; iap != NULL; iap = iap->ifa_next) {
@@ -404,27 +402,38 @@ Interface Channel::ipv4_to_if(sockaddr_in *find, std::map<string, short> pifs) {
 			if (find && memcmp(&cmp_subnet1, &cmp_subnet2, sizeof(cmp_subnet1)) == 0) {
 				fprintf(stderr, "Found interface %s with ip %s\n", iap->ifa_name, inet_ntoa(sa->sin_addr));
 				find->sin_addr = sa->sin_addr;
-				return Interface(iap->ifa_name, *(sockaddr *) &find, *(sockaddr *) temp_netmask);
-			}
-			// For the case that no match is found
-			// Determine default interface using pifs priority
-			std::map<string, short>::iterator it= pifs.find(iap->ifa_name);
-			if (it != pifs.end() && it->second > priority) { // Higher number, higher priority
-				si = sa->sin_addr;
-				buf = std::string(iap->ifa_name);
-				priority = it->second;
-				netmask = *temp_netmask;
+				iface = Interface(iap->ifa_name, *(sockaddr *) &find, *(sockaddr *) temp_netmask);
+				break;
 			}
 		}
 	}
 	freeifaddrs(addrs);
-	if (!buf.empty()) {
-		find->sin_addr = si; // Set the default interface address
-		fprintf(stderr, "Failed to find resembling ip. Try interface %s with ip %s\n",
-				buf.c_str(), inet_ntoa(find->sin_addr));
-	}
+	return iface;
+}
 
-	return Interface(buf, *(sockaddr *) &find, *(sockaddr *) &netmask);
+int Channel::ipv6_name_and_scope(sockaddr_in6 *find, Interface *iface) {
+	struct ifaddrs *addrs, *iap;
+	struct sockaddr_in6 *sa;
+	char host[NI_MAXHOST];
+
+	getifaddrs(&addrs);
+	for (iap = addrs; iap != NULL; iap = iap->ifa_next) {
+		if (iap->ifa_addr && (iap->ifa_flags & IFF_UP) && iap->ifa_addr->sa_family == AF_INET6) {
+			sa = (struct sockaddr_in6 *)(iap->ifa_addr);
+			if (memcmp(&find->sin6_addr.s6_addr, &sa->sin6_addr.s6_addr, sizeof(sa->sin6_addr.s6_addr)) == 0) {
+				getnameinfo(iap->ifa_addr, sizeof(struct sockaddr_in6), host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+				fprintf(stderr, "Found interface %s with scope %d\n", host, sa->sin6_scope_id);
+				find->sin6_scope_id = sa->sin6_scope_id;
+				std::string name(host);
+				iface->name = name.substr(name.find("%") + 1);
+				iface->ip = *(sockaddr *) &find;
+				iface->netmask = *(sockaddr *) &iap->ifa_netmask;
+				break;
+			}
+		}
+	}
+	freeifaddrs(addrs);
+	return 0;
 }
 
 // SOCKMGMT
@@ -447,29 +456,30 @@ evutil_socket_t Channel::Bind (Address address, sckrwecb_t callbacks, std::strin
 			(setsockoptptr_t)&rcvbuf, sizeof(int)) == 0 );
 
 	Interface iface;
-	struct sockaddr_in *si = (struct sockaddr_in *) &sa;
-	if (si->sin_addr.s_addr != 0) { // If it is the wildcard, don't do anything about it.
-		std::map<string, short> pifs;
-		pifs["wlan0"] = 1;
-		pifs["eth0"] = 2;
-		iface = ipv4_to_if(si, pifs);
-		if (iface.name == UNKNOWN_INTERFACE) {
-			fprintf(stderr, "No interface has been found\n");
-			return -1;
-		}
-		set_routing_table(*si, iface);
+	if (address.get_family() == AF_INET) {
+		struct sockaddr_in *si = (struct sockaddr_in *) &sa;
+		if (si->sin_addr.s_addr != 0) { // If it is the wildcard, don't do anything about it.
+			iface = ipv4_to_if(si);
+			if (iface.name == UNKNOWN_INTERFACE) {
+				fprintf(stderr, "No interface has been found\n");
+				return -1;
+			}
+			set_routing_table(*si, iface);
 
-		if ( setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, iface.name.c_str(), iface.name.size()) < 0) {
-			if (errno == 1) {
-				perror("I recommend getting permission to set SO_BINDTODEVICE");
-			} else {
-				perror("Failed to set SO_BINDTODEVICE");
+			if ( setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, iface.name.c_str(), iface.name.size()) < 0) {
+				if (errno == 1) {
+					perror("I recommend getting permission to set SO_BINDTODEVICE");
+				} else {
+					perror("Failed to set SO_BINDTODEVICE");
+				}
 			}
 		}
 	}
 	//setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (setsockoptptr_t)&enable, sizeof(int));
 	if (address.get_family() == AF_INET6)
 	{
+		struct sockaddr_in6 *si = (struct sockaddr_in6 *) &sa;
+		ipv6_name_and_scope(si, &iface);
 		// Arno, 2012-12-04: Enable IPv4 on this IPv6 socket, addresses
 		// show up as IPv4-mapped IPv6.
 		int no = 0;
