@@ -489,10 +489,9 @@ evutil_socket_t Channel::Bind (Address address, sckrwecb_t callbacks, std::strin
 
 	callbacks.sock = fd;
 	sock_open[sock_count++] = callbacks;
-	if (iface.name != UNKNOWN_INTERFACE) {
+	if (iface.name != UNKNOWN_INTERFACE)
 		iface.device = device;
-		Channel::socket_if_info_map[fd] = Channel::socket_if_info(address, iface);
-	}
+	Channel::socket_if_info_map[fd] = Channel::socket_if_info(address, iface);
 	return fd;
 }
 

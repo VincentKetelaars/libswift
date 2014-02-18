@@ -105,7 +105,11 @@ int     swift::Listen(Address addr, std::string device)
 			Channel::socket_if_info_map[cb.sock].address.set_port(ntohs(sin.sin_port)); // Update the port number
 		}
 		if (addr.get_family() == AF_INET6) {
-
+			struct sockaddr_in6 sin6;
+			socklen_t len = sizeof(sin6);
+			if (getsockname(cb.sock, (struct sockaddr *)&sin6, &len) == -1)
+				perror("getsockname");
+			Channel::socket_if_info_map[cb.sock].address.set_port(ntohs(sin6.sin6_port)); // Update the port number
 		}
 	}
 	if (cb.sock != INVALID_SOCKET) {
