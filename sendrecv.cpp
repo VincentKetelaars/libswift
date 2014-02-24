@@ -1017,7 +1017,7 @@ void Channel::UpdateDIP(bin_t pos)
 		// Conservative: only adjust rtt_avg_ if 2x smaller
 		if (diff < rtt_avg_/2 && IsComplete())
 		{
-			fprintf(stderr,"%s #%u rtt adjust %lld -> %lld\n",tintstr(),id_,rtt_avg_,diff);
+			dprintf("%s #%u rtt adjust %lld -> %lld\n",tintstr(),id_,rtt_avg_,diff);
 			rtt_avg_ = diff;
 		}
 		rtt_hint_tintbin_.bin = bin_t::NONE;
