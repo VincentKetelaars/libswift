@@ -55,12 +55,12 @@ int     swift::Listen(Address addr, std::string device)
 	if (sock != -1) {
 		if (api_debug)
 			fprintf(stderr, "Socket %s is already running!\n", addr.str().c_str());
-		// TODO: Perhaps allow for sockets to hang on a little longer if they have only been gone for a few seconds
-		// TODO: Check for interface
-		if (Channel::socket_if_info_map[sock].err != 0)
-			sock_to_kill = sock;
-		else
-			return -1; // There is no point in trying to add an already running socket
+		if (Channel::socket_if_info_map[sock].err != 0) { // We assume here that we are dealing with the same interface!
+			struct evbuffer *sendevbuf = evbuffer_new();
+			Channel::SendTo(sock, Address("127.0.0.1:12345"), sendevbuf); // Send fake message to check if interface is indeed up and socket running
+			evbuffer_free(sendevbuf);
+		}
+		return -1; // There is no point in adding the same address
 	}
 
 	sock  = Channel::GetSimilarSocket(device, addr); // Socket with same device and/or ip
@@ -68,9 +68,11 @@ int     swift::Listen(Address addr, std::string device)
 		if (api_debug)
 			fprintf(stderr, "We have a socket %s for this device with error %d!\n",
 					Channel::socket_if_info_map[sock].address.str().c_str(), Channel::socket_if_info_map[sock].err);
-		if (Channel::socket_if_info_map[sock].err != 0)
-			sock_to_kill = sock;
-		// If someone wants to create a second socket on the same interface, let him
+		if (Channel::socket_if_info_map[sock].err != 0 &&
+			addr.ipstr(false).compare(Channel::socket_if_info_map[sock].address.ipstr(false)) != 0) { // Unequal IPs
+			sock_to_kill = sock; // Error and not same ip, so we kill it
+		}
+		// If it is the same IP, we allow it
 	}
 
 	if (sock_to_kill != -1) {

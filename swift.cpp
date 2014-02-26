@@ -251,7 +251,7 @@ int utf8main (int argc, char** argv)
 			break;
 			// Arno hack: get opt diff Win32 doesn't allow -D without arg
 		case 'B':
-			fprintf(stderr,"SETTING DEBUG TO STDOUT\n");
+			fprintf(stderr,"SETTING DEBUG TO STDERR\n");
 			Channel::debug_file = stderr;
 			break;
 		case 'p':

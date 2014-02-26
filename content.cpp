@@ -310,18 +310,18 @@ void ContentTransfer::AddPeer(Address &peer, int fd)
 		if (FindChannel(fd, peer, NULL) == NULL)
 			Channel *c = new Channel(this,fd,peer);
 		else
-			fprintf(stderr, "Already have channel with peer %s and socket %s", peer.str().c_str(),
+			fprintf(stderr, "Already have channel with peer %s and socket %s\n", peer.str().c_str(),
 					Channel::BoundAddress(fd).str().c_str());
 	} else if (peer != Address() && fd < 0) { // Create channel for this peer with all sockets (not yet already done)
 		for (int i = 0; i < Channel::sock_count; i++) {
 			if (FindChannel(Channel::sock_open[i].sock, peer, NULL) == NULL)
 				Channel *c = new Channel(this,Channel::sock_open[i].sock,peer);
 			else
-				fprintf(stderr, "Already have channel with peer %s and socket %s", peer.str().c_str(),
+				fprintf(stderr, "Already have channel with peer %s and socket %s\n", peer.str().c_str(),
 						Channel::BoundAddress(Channel::sock_open[i].sock).str().c_str());
 		}
 	} else { // Peer is not valid
-		fprintf(stderr, "Cannot create channel for peer %s and socket %s", peer.str().c_str(), Channel::BoundAddress(fd).str().c_str());
+		fprintf(stderr, "Cannot create channel for peer %s and socket %s\n", peer.str().c_str(), Channel::BoundAddress(fd).str().c_str());
 	}
 }
 
