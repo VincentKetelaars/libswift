@@ -401,9 +401,11 @@ Interface Channel::ipv4_to_if(sockaddr_in *find) {
 			in_addr_t cmp_subnet2 = sa->sin_addr.s_addr & temp_netmask->sin_addr.s_addr;
 			if (find && memcmp(&cmp_subnet1, &cmp_subnet2, sizeof(cmp_subnet1)) == 0) {
 				fprintf(stderr, "Found interface %s with ip %s\n", iap->ifa_name, inet_ntoa(sa->sin_addr));
+				in_addr_t old_ip = find->sin_addr.s_addr;
 				find->sin_addr = sa->sin_addr;
 				iface = Interface(iap->ifa_name, *(sockaddr *) &find, *(sockaddr *) temp_netmask);
-				break;
+				if (old_ip == sa->sin_addr.s_addr) // If it is not an exact match we continue to look
+					break;
 			}
 		}
 	}
