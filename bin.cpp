@@ -66,7 +66,7 @@ std::string bin_t::str() const
     } else if (is_none()) {
         return "(NONE)";
     } else {
-	std::ostringstream cross;
+        std::ostringstream cross;
         cross << "(";
         cross << layer();
         cross << ",";
@@ -83,4 +83,13 @@ std::string bin_t::str() const
 std::ostream & operator << (std::ostream & ostream, const bin_t & bin)
 {
     return ostream << bin.str();
+}
+
+
+bool bin_sort_on_layer_cmp(bin_t i, bin_t j)
+{
+    if (i.layer() == j.layer())
+        return i.layer_offset() < j.layer_offset();
+    else
+        return i.layer() < j.layer();
 }

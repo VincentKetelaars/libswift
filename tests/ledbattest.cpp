@@ -25,7 +25,8 @@ using namespace std;
   * busy pipe => negative cwnd
 */
 
-TEST(Datagram,LedbatTest) {
+TEST(Datagram,LedbatTest)
+{
 
     int MAX_REORDERING = 3;
     tint TARGET = 25*TINT_MSEC;
@@ -40,9 +41,11 @@ TEST(Datagram,LedbatTest) {
     int delay_bin = 0;
     deque<tint> history, delay_history;
     tint min_delay_bins[4] = {TINT_NEVER,TINT_NEVER,
-        TINT_NEVER,TINT_NEVER};
+                              TINT_NEVER,TINT_NEVER
+                             };
     tint cur_delays[4] = {TINT_NEVER,TINT_NEVER,
-        TINT_NEVER,TINT_NEVER};
+                          TINT_NEVER,TINT_NEVER
+                         };
     tint last_sec = 0;
     int sec_ackd = 0;
 
@@ -71,7 +74,7 @@ TEST(Datagram,LedbatTest) {
             ack.Push64(now);
             if (4+8!=ack.Send())
                 fprintf(stderr,"short write\n");
-            fprintf(stderr,"%lli rcvd%i\n",now/TINT_SEC,seq);
+            fprintf(stderr,"%" PRIi64 " rcvd%i\n",now/TINT_SEC,seq);
             //cc->OnDataRecv(bin64_t(0,seq));
             // TODO: peer cwnd !!!
             continue;
@@ -96,7 +99,7 @@ TEST(Datagram,LedbatTest) {
                     last_drop_time = now;
                 }
                 fprintf(stderr,"got %i. LOSS, cwnd drop: %f\n",seq,cwnd);
-                for(int i=0; i<MAX_REORDERING*2 && history.size(); i++) {
+                for (int i=0; i<MAX_REORDERING*2 && history.size(); i++) {
                     seq_off++;
                     history.pop_front();
                 }
@@ -112,7 +115,7 @@ TEST(Datagram,LedbatTest) {
                 delay_bin = (delay_bin+1) % 4;
                 min_delay_bins[delay_bin] = TINT_NEVER;
                 min_delay = TINT_NEVER;
-                for(int i=0;i<4;i++)
+                for (int i=0; i<4; i++)
                     if (min_delay_bins[i]<min_delay)
                         min_delay = min_delay_bins[i];
             }
@@ -122,7 +125,7 @@ TEST(Datagram,LedbatTest) {
                 min_delay = delay;
             cur_delays[(seq_off+seq)%4] = delay;
             tint current_delay = TINT_NEVER;
-            for(int i=0; i<4; i++)
+            for (int i=0; i<4; i++)
                 if (current_delay > cur_delays[i])
                     current_delay = cur_delays[i];  // FIXME avg
             tint queueing_delay = current_delay - min_delay;
@@ -130,7 +133,7 @@ TEST(Datagram,LedbatTest) {
             tint off_target = TARGET - queueing_delay;
             //cerr<<"\t"<<cwnd<<"+="<<GAIN<<"*"<<off_target<<"/"<<cwnd<<endl;
             cwnd += GAIN * off_target / cwnd;
-            fprintf(stderr,"ackd cwnd%f cur%lli min%lli seq%i off%i\n",
+            fprintf(stderr,"ackd cwnd%f cur%" PRIi64 " min%" PRIi64 " seq%i off%i\n",
                     cwnd,current_delay,min_delay,seq_off+seq,seq);
 
             if (now/TINT_SEC!=last_sec/TINT_SEC) {
@@ -174,7 +177,8 @@ TEST(Datagram,LedbatTest) {
     } // while
 }
 
-int main (int argc, char** argv) {
+int main(int argc, char** argv)
+{
     printf("Warning: use the script to set up dummynet!\n");
 
     swift::LibraryInit();

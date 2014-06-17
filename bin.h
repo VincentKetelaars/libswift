@@ -56,7 +56,8 @@
  *
  */
 
-class bin_t {
+class bin_t
+{
 public:
     /**
      * Basic integer type
@@ -209,7 +210,7 @@ public:
 
 
     /**
-     * Sets this object to the right child
+     * Sets this object to the right child. WARNING: does NOT calculate next-in-layer when at base!
      */
     bin_t& to_right(void);
 
@@ -257,7 +258,7 @@ public:
 
 
     /**
-     * Gets the right child
+     * Gets the right child. WARNING: does NOT calculate next-in-layer when at base!
      */
     bin_t right(void) const;
 
@@ -749,7 +750,7 @@ inline bin_t bin_t::base_right(void) const
  */
 inline bin_t bin_t::twisted(uint_t mask) const
 {
-    return bin_t( v_ ^ ((mask << 1) & ~layer_bits()) );
+    return bin_t(v_ ^ ((mask << 1) & ~layer_bits()));
 }
 
 
@@ -759,9 +760,9 @@ inline bin_t bin_t::twisted(uint_t mask) const
 inline bin_t bin_t::layer_shifted(int zlayer) const
 {
     if (layer_bits() >> zlayer) {
-        return bin_t( v_  >> zlayer );
+        return bin_t(v_  >> zlayer);
     } else {
-        return bin_t( (v_ >> zlayer) & ~static_cast<uint_t>(1) );
+        return bin_t((v_ >> zlayer) & ~static_cast<uint_t>(1));
     }
 }
 
@@ -778,5 +779,11 @@ inline bool bin_t::contains(const bin_t& bin) const
     return (v_ & (v_ + 1)) <= bin.v_ && bin.v_ < (v_ | (v_ + 1));
 }
 
+// Arno, 2013-03-06: Define here as livehashtree.h needs it.
+#include <vector>
+typedef std::vector<bin_t> binvector;
+
+
+bool bin_sort_on_layer_cmp(bin_t i, bin_t j);
 
 #endif /*_bin_h__*/

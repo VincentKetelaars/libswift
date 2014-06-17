@@ -19,7 +19,7 @@
 using namespace swift;
 
 
-#define TESTFILE 	 "rw.dat"
+#define TESTFILE     "rw.dat"
 
 int RemoveTestFile()
 {
@@ -34,10 +34,9 @@ int CreateTestFile(uint64_t size)
     RemoveTestFile();
 
     int f = open(TESTFILE,O_RDWR|O_CREAT|O_TRUNC,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
-    if (f < 0)
-    {
-	eprintf("Error opening %s\n",TESTFILE);
-	return -1;
+    if (f < 0) {
+        eprintf("Error opening %s\n",TESTFILE);
+        return -1;
     }
 
     char *buf = new char[size];
@@ -49,12 +48,14 @@ int CreateTestFile(uint64_t size)
     return ret;
 }
 
-TEST(SimpleAPITest,WriteRead) {
+TEST(SimpleAPITest,WriteRead)
+{
 
     RemoveTestFile();
 
     Sha1Hash fakeroot(true,"a8fdc205a9f19cc1c7507a60c4f01b13d11d7fd0");
-    int td = swift::Open(TESTFILE,fakeroot);
+    SwarmID swarmid(fakeroot);
+    int td = swift::Open(TESTFILE,swarmid);
     ASSERT_NE(td,-1);
 
     char expblock[1024];
@@ -67,46 +68,52 @@ TEST(SimpleAPITest,WriteRead) {
     ret = swift::Read(td,gotblock,512,0);
     ASSERT_EQ(ret,512);
     for (int i=0; i<512; i++)
-	ASSERT_EQ(expblock[i],gotblock[i]);
+        ASSERT_EQ(expblock[i],gotblock[i]);
 
     ret = swift::Read(td,gotblock,512,512);
     ASSERT_EQ(ret,512);
     for (int i=0; i<512; i++)
-	ASSERT_EQ(expblock[512+i],gotblock[i]);
+        ASSERT_EQ(expblock[512+i],gotblock[i]);
 }
 
-TEST(SimpleAPITest,SizeFailUnknownTD) {
+TEST(SimpleAPITest,SizeFailUnknownTD)
+{
 
     uint64_t ret = swift::Size(567);
     ASSERT_EQ(ret,0);
 }
 
 
-TEST(SimpleAPITest,IsCompleteFailUnknownTD) {
+TEST(SimpleAPITest,IsCompleteFailUnknownTD)
+{
 
     bool ret = swift::IsComplete(567);
     ASSERT_EQ(ret,false);
 }
 
 
-TEST(SimpleAPITest,CompleteFailUnknownTD) {
+TEST(SimpleAPITest,CompleteFailUnknownTD)
+{
 
     uint64_t ret = swift::Complete(567);
     ASSERT_EQ(ret,0);
 }
 
 
-TEST(SimpleAPITest,SeqCompleteFailUnknownTD) {
+TEST(SimpleAPITest,SeqCompleteFailUnknownTD)
+{
 
     uint64_t ret = swift::SeqComplete(567);
     ASSERT_EQ(ret,0);
 }
 
 
-TEST(SimpleAPITest,SwarmIDFailUnknownTD) {
+TEST(SimpleAPITest,SwarmIDFailUnknownTD)
+{
 
-    Sha1Hash hash = swift::SwarmID(567);
-    ASSERT_EQ(hash,Sha1Hash::ZERO);
+    SwarmID gotswarmid = swift::GetSwarmID(567);
+    SwarmID expswarmid = SwarmID::NOSWARMID;
+    ASSERT_EQ(gotswarmid,expswarmid);
 }
 
 
@@ -115,7 +122,8 @@ TEST(SimpleAPITest,ChunkSizeSuccess1024)
 {
     ASSERT_EQ(CreateTestFile(1024),1024);
 
-    int td = swift::Open(TESTFILE);
+    SwarmID swarmid = SwarmID::NOSWARMID;
+    int td = swift::Open(TESTFILE,swarmid);
     uint32_t cs = swift::ChunkSize(td);
     ASSERT_EQ(cs,1024);
 
@@ -127,7 +135,8 @@ TEST(SimpleAPITest,ChunkSizeSuccess8192)
 {
     ASSERT_EQ(CreateTestFile(1024),1024);
 
-    int td = swift::Open(TESTFILE,Sha1Hash::ZERO,Address(),false,true,false,true,8192);
+    SwarmID swarmid = SwarmID::NOSWARMID;
+    int td = swift::Open(TESTFILE,swarmid,"",false,POPT_CONT_INT_PROT_NONE,false,true,8192);
     uint32_t cs = swift::ChunkSize(td);
     ASSERT_EQ(cs,8192);
 
@@ -146,7 +155,8 @@ TEST(SimpleAPITest,GetOSPathNameSuccess)
 {
     ASSERT_EQ(CreateTestFile(1024),1024);
 
-    int td = swift::Open(TESTFILE);
+    SwarmID swarmid = SwarmID::NOSWARMID;
+    int td = swift::Open(TESTFILE,swarmid);
     std::string gotpath = swift::GetOSPathName(td);
     ASSERT_EQ(TESTFILE,gotpath);
 
@@ -173,13 +183,14 @@ TEST(SimpleAPITest,IsZeroStateSuccess)
     ASSERT_EQ(CreateTestFile(4100),4100);
 
     // Create file and checkpoint
-    int td = swift::Open(TESTFILE);
+    SwarmID noswarmid = SwarmID::NOSWARMID;
+    int td = swift::Open(TESTFILE,noswarmid);
     int ret = swift::Checkpoint(td);
     ASSERT_EQ(ret,0);
-    Sha1Hash roothash = SwarmID(td);
+    SwarmID expswarmid = swift::GetSwarmID(td);
     swift::Close(td,false,false);
 
-    td = swift::Open(TESTFILE,roothash,Address(),false,true,true,true,1024);
+    td = swift::Open(TESTFILE,expswarmid,"",false,POPT_CONT_INT_PROT_NONE,true,true,1024);
     bool retb = swift::IsZeroState(td);
     ASSERT_EQ(retb,true);
 
@@ -210,7 +221,8 @@ TEST(SimpleAPITest,SeekSuccess)
 {
     ASSERT_EQ(CreateTestFile(4100),4100);
 
-    int td = swift::Open(TESTFILE);
+    SwarmID swarmid = SwarmID::NOSWARMID;
+    int td = swift::Open(TESTFILE,swarmid);
     int ret = swift::Seek(td,1032,SEEK_SET);
     ASSERT_EQ(ret,0);
 
@@ -231,7 +243,8 @@ TEST(SimpleAPITest,TouchFailUnknownTD)
 }
 
 
-int main (int argc, char** argv) {
+int main(int argc, char** argv)
+{
 
     // Arno: required
     LibraryInit();
