@@ -574,7 +574,7 @@ struct Interface {
         Channel *       RandomChannel(Channel *notc);
         /** Arno: Return the Channel to peer "addr" that is not equal to "notc". */
         Channel *       FindChannel(evutil_socket_t sock, const Address &addr, Channel *notc);
-        void            CloseChannels(channels_t delset); // do not pass by reference
+        void            CloseChannels(channels_t delset, bool isall); // do not pass by reference
         void            GarbageCollectChannels();
 
         // RATELIMIT
@@ -975,8 +975,6 @@ struct Interface {
         static Address  BoundAddress(evutil_socket_t sock);
         static evutil_socket_t GetSocket(Address &saddr);
         static evutil_socket_t GetSimilarSocket(std::string device, Address address);
-        static evutil_socket_t default_socket()
-            { return sock_count ? sock_open[0].sock : INVALID_SOCKET; }
         static channels_t	GetChannelsBySocket(evutil_socket_t sock);
         static evutil_socket_t default_socket() {
             return sock_count ? sock_open[0].sock : INVALID_SOCKET;
@@ -1101,6 +1099,9 @@ struct Interface {
         HashTree *  hashtree();
         ContentTransfer *transfer() {
             return transfer_;
+        }
+        const evutil_socket_t mysocket() {
+        	return socket_;
         }
         const Address& peer() const {
             return peer_;
@@ -1587,7 +1588,7 @@ struct Interface {
     /** Add a possible peer which participares in a given transmission. In the case
         root hash is zero, the peer might be talked to regarding any transmission
         (likely, a tracker, cache or an archive). */
-    void    AddPeer( Address& address, int fd, const Sha1Hash& root=Sha1Hash::ZERO);
+    void    AddPeer( Address& address, int fd, SwarmID swarmid=SwarmID());
 
     /** UNIX pread approximation. Does change file pointer. Thread-safe if no concurrent writes. Autoactivates */
     ssize_t Read(int td, void *buf, size_t nbyte, int64_t offset);  // off_t not 64-bit dynamically on Win32

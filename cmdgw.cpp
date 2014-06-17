@@ -247,7 +247,7 @@ void CmdGwGotSETMOREINFO(SwarmID &swarmid, bool enable)
     req->moreinfo = enable;
 }
 
-void CmdGwGotPEERADDR(SwarmID &swarmid, Address &peer, Address &saddr)
+void CmdGwGotPEERADDR(SwarmID swarmid, Address &peer, Address &saddr)
 {
     cmd_gw_t* req = CmdGwFindRequestBySwarmID(swarmid);
     if (req == NULL)

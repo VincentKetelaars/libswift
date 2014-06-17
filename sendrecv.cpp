@@ -2151,7 +2151,7 @@ void Channel::RecvDatagram(evutil_socket_t socket)
         }
 
         // Arno, 2012-02-27: Check for duplicate channel
-        Channel* existchannel = ct->FindChannel(addr,NULL);
+        Channel* existchannel = ct->FindChannel(socket,addr,NULL);
         if (existchannel != NULL) {
             // Arno: 2011-10-13: Ignore if established, otherwise consider
             // it a concurrent connection attempt.
@@ -2194,7 +2194,7 @@ void Channel::RecvDatagram(evutil_socket_t socket)
 
     } else if (CmdGwTunnelCheckChannel(mych)) {
         // SOCKTUNNEL
-        CmdGwTunnelUDPDataCameIn(addr,mych,evb);
+        CmdGwTunnelUDPDataCameIn(addr,mych,evb,Channel::BoundAddress(socket));
         evbuffer_free(evb);
         return;
     } else { // peer responds to my handshake (and other messages)

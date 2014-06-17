@@ -739,7 +739,7 @@ int swift::Seek(int td, int64_t offset, int whence)
 
 
 
-void swift::AddPeer(Address& addr, int fd, SwarmID& swarmid)
+void swift::AddPeer(Address& addr, int fd, SwarmID swarmid)
 {
     if (api_debug)
         fprintf(stderr,"swift::AddPeer addr %s hash %s fd %d\n", addr.str().c_str(), swarmid.hex().c_str(), fd);

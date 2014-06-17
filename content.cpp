@@ -450,7 +450,7 @@ Channel * ContentTransfer::FindChannel(evutil_socket_t sock, const Address &addr
     for (iter=mychannels_.begin(); iter!=mychannels_.end(); iter++) {
         Channel *c = *iter;
         if (c != NULL) {
-        	if (c != notc && c->socket_ == sock && (c->peer() == addr || c->recv_peer() == addr)) {
+        	if (c != notc && c->mysocket() == sock && (c->peer() == addr || c->recv_peer() == addr)) {
                 return c;
             }
         }

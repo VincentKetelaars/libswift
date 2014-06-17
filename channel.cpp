@@ -78,8 +78,8 @@ Channel::Channel(ContentTransfer* transfer, int socket, Address peer_addr) :
     owd_cur_(TINT_NEVER), owd_min_(TINT_NEVER),
     dgrams_sent_(0), dgrams_rcvd_(0),
     raw_bytes_up_(0), raw_bytes_down_(0), bytes_up_(0), bytes_down_(0),
-    speedupcount_(0), speeddwcount_(0),
     old_movingfwd_bytes_(0),
+    speedupcount_(0), speeddwcount_(0),
     scheduled4del_(false), reschedule_delay_(0),
     hs_out_(NULL), hs_in_(NULL),
     last_sent_munro_(bin_t::NONE),
@@ -139,7 +139,7 @@ Channel::~Channel()
         hs_out_ = NULL;
     }
 	if (Channel::onChannelClosedCallback and hashtree() != NULL) // Callback available
-		Channel::onChannelClosedCallback(hashtree()->root_hash(), BoundAddress(mysocket()), peer());
+		Channel::onChannelClosedCallback(hashtree()->root_hash(), BoundAddress(socket_), peer());
 }
 
 
@@ -217,7 +217,7 @@ bool Channel::IsDiffSenderOrDuplicate(Address addr, uint32_t chid)
             //
             recv_peer_ = addr;
 
-            Channel *c = transfer()->FindChannel(addr,this);
+            Channel *c = transfer()->FindChannel(socket_,addr,this);
             if (c == NULL)
                 return false;
 
@@ -433,7 +433,7 @@ evutil_socket_t Channel::Bind (Address address, sckrwecb_t callbacks, std::strin
 	struct sockaddr_storage sa = address;
 	evutil_socket_t fd;
 	// Arno, 2013-06-05: MacOS X bind fails if sizeof(struct sockaddr_storage) is passed.
-	int len = address.get_real_sockaddr_length(), sndbuf=1<<20, rcvbuf=1<<20;
+	int len = address.get_family_sockaddr_length(), sndbuf=1<<20, rcvbuf=1<<20;
 #define dbnd_ensure(x) { if (!(x)) { \
 		print_error("binding fails"); Channel::updateSocketIfInfo(fd, errno); close_socket(fd); return INVALID_SOCKET; } }
 	// TODO: Will not be able to get socket address in case error comes before binding
@@ -640,7 +640,7 @@ channels_t Channel::GetChannelsBySocket(evutil_socket_t sock) {
 	channels_t::iterator iter;
 	for (iter=channels.begin(); iter!=channels.end(); iter++) {
 		if ((*iter) != NULL) {
-			if ((*iter)->mysocket() == sock) {
+			if ((*iter)->socket_ == sock) {
 				cbs.push_back(*iter);
 			}
 		}
@@ -881,7 +881,6 @@ Sha1Hash swift::evbuffer_remove_hash(struct evbuffer* evb)
     if (evbuffer_remove(evb, bits, Sha1Hash::SIZE) < Sha1Hash::SIZE)
         return Sha1Hash::ZERO;
     return Sha1Hash(false, bits);
->>>>>>> remotes/upstream/devel
 }
 
 // PPSP

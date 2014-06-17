@@ -241,6 +241,7 @@ int utf8main(int argc, char** argv)
             scan_dirname = strdup(optarg);
             break;
         case 'l':
+        {
         	std::vector<std::string> addrs;
 			split(optarg, ',', addrs);
 			for (int i = 0; i < addrs.size(); i++) {
@@ -251,7 +252,7 @@ int utf8main(int argc, char** argv)
 				bindaddrs.push_back(bindaddr);
 			}
 			break;
-
+        }
 		case 'R':
 		{
 			std::vector<std::string> Rargs;
@@ -493,7 +494,7 @@ int utf8main(int argc, char** argv)
 		}
 	}
 
-	if (!seeding && (tracker!=Address() || httpgw_enabled)) { // leeching
+	if (!seeding && (trackerurl != "" || httpgw_enabled)) { // leeching
 		evutil_socket_t sock = INVALID_SOCKET;
 		for (int i=0; i<=10; i++) {
 			bindaddr = Address((uint32_t)INADDR_ANY,0);
