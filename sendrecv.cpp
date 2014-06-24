@@ -721,7 +721,7 @@ bin_t        Channel::AddData(struct evbuffer *evb)
 {
     // RATELIMIT
     if (transfer()->GetCurrentSpeed(DDIR_UPLOAD) > transfer()->GetMaxSpeed(DDIR_UPLOAD)) {
-        transfer()->OnSendNoData();
+        OnSendNoData();
         return bin_t::NONE;
     }
     //LIVE
@@ -753,7 +753,7 @@ bin_t        Channel::AddData(struct evbuffer *evb)
     AddRequiredHashes(evb,tosend,isretransmit);
 
     if (tosend.is_none()) {// && (last_data_out_time_>NOW-TINT_SEC || data_out_.empty()))
-        transfer()->OnSendNoData();
+        OnSendNoData();
         return bin_t::NONE; // once in a while, empty data is sent just to check rtt FIXED
     }
 
@@ -811,7 +811,7 @@ bin_t        Channel::AddData(struct evbuffer *evb)
 
     // RATELIMIT
     // ARNOSMPTODO: count overhead bytes too? Move to Send() then.
-    transfer_->OnSendData(transfer()->chunk_size());
+    OnSendData(transfer()->chunk_size());
 
     return tosend;
 }
@@ -961,7 +961,7 @@ void    Channel::Recv(struct evbuffer *evb)
     lastrecvwaskeepalive_ = (evbuffer_get_length(evb) == 0);
     if (lastrecvwaskeepalive_)
         // Update speed measurements such that they decrease when DL stops
-        transfer()->OnRecvData(0);
+        OnRecvData(0);
 
     if (last_send_time_ && rtt_avg_==TINT_SEC && dev_avg_==0) {
         rtt_avg_ = NOW - last_send_time_;
@@ -1280,7 +1280,7 @@ bin_t Channel::OnData(struct evbuffer *evb)     // TODO: HAVE NONE for corrupted
     transfer()->Progress(cover);
     //if (cover.layer() >= 5) // Arno: update DL speed. Tested with 32K, presently = 2 ** 5 * chunk_size CHUNKSIZE
     //    transfer()->OnRecvData( pow((double)2,(double)5)*((double)transfer()->chunk_size()) );
-    transfer()->OnRecvData(transfer()->chunk_size());
+    OnRecvData(transfer()->chunk_size());
 
     data_in_ = tintbin(NOW,bin_t::NONE);
     data_in_.bin = pos;
