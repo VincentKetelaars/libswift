@@ -124,10 +124,11 @@ Channel::~Channel()
         channels_t::iterator iter;
         channels_t *channels = transfer_->GetChannels();
         for (iter=channels->begin(); iter!=channels->end(); iter++) {
-            if (*iter == this)
+            if (*iter == this) {
+        		channels->erase(iter);
                 break;
+            }
         }
-        channels->erase(iter);
     }
 
     if (hs_in_ != NULL) {
