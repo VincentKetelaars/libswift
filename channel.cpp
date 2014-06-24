@@ -103,6 +103,10 @@ Channel::Channel(ContentTransfer* transfer, int socket, Address peer_addr) :
 
 	//LIVE
 	evsendlive_ptr_ = NULL;
+
+    // RATELIMIT
+    transfer_->GetChannels()->push_back(this);
+
     hs_out_ = new Handshake(transfer->GetDefaultHandshake());
 
     dprintf("%s #%" PRIu32 " init channel %s transfer %d\n",tintstr(),id_,peer_.str().c_str(), transfer_->td());
@@ -124,11 +128,10 @@ Channel::~Channel()
         channels_t::iterator iter;
         channels_t *channels = transfer_->GetChannels();
         for (iter=channels->begin(); iter!=channels->end(); iter++) {
-            if (*iter == this) {
-        		channels->erase(iter);
+            if (*iter == this)
                 break;
-            }
         }
+		channels->erase(iter);
     }
 
     if (hs_in_ != NULL) {
