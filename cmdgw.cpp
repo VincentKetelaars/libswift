@@ -837,19 +837,19 @@ int CmdGwHandleCommand(evutil_socket_t cmdsock, char *copyline)
         // Handle tracker
         // External tracker via URL param
         std::string trackerurl = "";
-        if (trackerstr == "" && bttrackerurl == "") {
-            trackerstr = Channel::trackerurl;
-            if (trackerstr == "") {
-                dprintf("cmd: START: tracker address must be URL server as hostname:port or ip:port, or set via ?bt=\n");
-                return ERROR_BAD_ARG;
-            }
-        }
-        // not else
-        if (bttrackerurl == "") {
-            trackerurl = SWIFT_URI_SCHEME;
-            trackerurl += "://";
-            trackerurl += trackerstr;
-        }
+//        if (trackerstr == "" && bttrackerurl == "") {
+//            trackerstr = Channel::trackerurl;
+//            if (trackerstr == "") {
+//                dprintf("cmd: START: tracker address must be URL server as hostname:port or ip:port, or set via ?bt=\n");
+//                return ERROR_BAD_ARG;
+//            }
+//        }
+//        // not else
+//        if (bttrackerurl == "") {
+//            trackerurl = SWIFT_URI_SCHEME;
+//            trackerurl += "://";
+//            trackerurl += trackerstr;
+//        }
 
 
         // initiate transmission
