@@ -1276,8 +1276,8 @@ void swift::CmdGwTunnelUDPDataCameIn(Address srcaddr, uint32_t srcchan, struct e
     std::ostringstream oss;
     oss << "TUNNELRECV " << srcaddr.str();
     oss << "/" << std::hex << srcchan;
-    oss << " " << std::dec << evb_len << "\r\n";
-    oss << data_str;
+    oss << " " << std::dec << evb_len;
+	oss << " " << destaddr.str() << "\r\n";
 
     std::string msg_str = oss.rdbuf()->str();
     size_t msg_len = msg_str.size();
