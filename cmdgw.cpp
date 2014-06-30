@@ -82,6 +82,12 @@ typedef enum {
     CMDGW_TUNNEL_READTUNNEL
 } cmdgw_tunnel_t;
 
+typedef enum {
+    SWIFT_STATUS_ERROR,
+    SWIFT_STATUS_OK,
+    SWIFT_STATUS_EXITING,
+} swift_status_t;
+
 std::vector< uint32_t > tunnel_channels_;
 
 cmdgw_tunnel_t cmd_tunnel_state=CMDGW_TUNNEL_SCAN4CRLF;
@@ -107,7 +113,7 @@ tint cmd_gw_last_open=0;
 
 // Fwd defs
 void CmdGwDataCameInCallback(struct bufferevent *bev, void *ctx);
-bool CmdGwReadLine(evutil_socket_t cmdsock);
+int CmdGwReadLine(evutil_socket_t cmdsock);
 void CmdGwNewRequestCallback(evutil_socket_t cmdsock, char *line);
 void CmdGwProcessData(evutil_socket_t cmdsock);
 
@@ -154,8 +160,10 @@ void CmdGwCloseConnection(evutil_socket_t sock)
         }
     }
 
-    if (cmd_evbuffer != NULL)
+    if (cmd_evbuffer != NULL) {
         evbuffer_free(cmd_evbuffer);
+        cmd_evbuffer = NULL;
+    }
 
     // Arno, 2012-07-06: Close
     swift::close_socket(sock);
@@ -680,12 +688,14 @@ void CmdGwProcessData(evutil_socket_t cmdsock)
     // Process CMD data in the cmd_evbuffer
 
     if (cmd_tunnel_state == CMDGW_TUNNEL_SCAN4CRLF) {
-        bool ok=false;
+        int status=SWIFT_STATUS_ERROR;
         do {
-            ok = CmdGwReadLine(cmdsock);
-            if (ok && cmd_tunnel_state == CMDGW_TUNNEL_READTUNNEL)
+            status = CmdGwReadLine(cmdsock);
+            if (status == SWIFT_STATUS_OK && cmd_tunnel_state == CMDGW_TUNNEL_READTUNNEL)
                 break;
-        } while (ok);
+            if (status == SWIFT_STATUS_EXITING)
+                return;
+        } while (status == SWIFT_STATUS_OK);
     }
     // Not else!
     if (cmd_tunnel_state == CMDGW_TUNNEL_READTUNNEL) {
@@ -707,7 +717,7 @@ void CmdGwProcessData(evutil_socket_t cmdsock)
 }
 
 
-bool CmdGwReadLine(evutil_socket_t cmdsock)
+int CmdGwReadLine(evutil_socket_t cmdsock)
 {
     // Parse cmd_evbuffer for lines, and call NewRequest when found
 
@@ -716,9 +726,12 @@ bool CmdGwReadLine(evutil_socket_t cmdsock)
     if (cmd != NULL) {
         CmdGwNewRequestCallback(cmdsock,cmd);
         free(cmd);
-        return true;
+        if (cmd_evbuffer == NULL)
+            // Swift is shutting down
+            return SWIFT_STATUS_EXITING;
+        return SWIFT_STATUS_OK;
     } else
-        return false;
+        return SWIFT_STATUS_ERROR;
 }
 
 int CmdGwHandleCommand(evutil_socket_t cmdsock, char *copyline);
@@ -1252,27 +1265,26 @@ void swift::CmdGwTunnelUDPDataCameIn(Address srcaddr, uint32_t srcchan, struct e
         fprintf(stderr,"cmdgw: TunnelUDPData:DataCameIn " PRISIZET " bytes from %s/%08x\n", evbuffer_get_length(evb),
                 srcaddr.str().c_str(), srcchan);
 
-	/*
-	 *  Format:
-	 *  TUNNELRECV ip:port/hexchanid nbytes\r\n
-	 *  <bytes>
-	 */
+    size_t evb_len = evbuffer_get_length(evb);
+    uint8_t *data = evbuffer_pullup(evb, evb_len);
+    std::string data_str((const char *) data, evb_len);
+    /*
+     *  Format:
+     *  TUNNELRECV ip:port/hexchanid nbytes\r\n
+     *  <bytes>
+     */
+    std::ostringstream oss;
+    oss << "TUNNELRECV " << srcaddr.str();
+    oss << "/" << std::hex << srcchan;
+    oss << " " << std::dec << evb_len << "\r\n";
+    oss << data_str;
 
-	std::ostringstream oss;
-	oss << "TUNNELRECV " << srcaddr.str();
-	oss << "/" << std::hex << srcchan;
-	oss << " " << std::dec << evbuffer_get_length(evb) ;
-	oss << " " << destaddr.str() << "\r\n";
+    std::string msg_str = oss.rdbuf()->str();
+    size_t msg_len = msg_str.size();
 
-	std::stringbuf *pbuf=oss.rdbuf();
-	size_t slen = strlen(pbuf->str().c_str());
-	send(cmd_tunnel_sock,pbuf->str().c_str(),slen,0);
+    send(cmd_tunnel_sock, msg_str.c_str(), msg_len, 0);
 
-	slen = evbuffer_get_length(evb);
-	uint8_t *data = evbuffer_pullup(evb,slen);
-	send(cmd_tunnel_sock,(const char *)data,slen,0);
-
-	evbuffer_drain(evb,slen);
+    evbuffer_drain(evb, evb_len);
 }
 
 
