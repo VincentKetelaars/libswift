@@ -118,12 +118,12 @@ if sys.platform == "win32":
 
 else:
     # Linux or Mac build
-    libevent2path = '/home/vincent/svn/libswift/libevent21'
+    libevent2path = ''
     if WITHOPENSSL:
-        opensslpath = '/usr/lib/i386-linux-gnu'
+        opensslpath = '/usr/include/x86_64-linux-gnu'
 
     # Enable the user defining external includes
-    cpppath = os.environ.get('CPPPATH', '')
+    cpppath = os.environ.get('CPPPATH', '/home/vincent/git/dispersy-experiments/libevent')
     if not cpppath:
         print "To use external libs, set CPPPATH environment variable to list of colon-separated include dirs"
     cpppath += libevent2path+'/include:'
@@ -144,7 +144,7 @@ else:
         libs.append('ssl')
 	libs.append('crypto')
 
-    libpath = os.environ.get('LIBPATH', '')
+    libpath = os.environ.get('LIBPATH', '/usr/local/lib')
     if not libpath:
         print "To use external libs, set LIBPATH environment variable to list of colon-separated lib dirs"
     libpath += libevent2path+'/lib:'
